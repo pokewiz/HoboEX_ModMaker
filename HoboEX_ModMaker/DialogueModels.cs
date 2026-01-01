@@ -166,34 +166,49 @@ namespace HoboEX_ModMaker.Models
     public static class DialogueModels
     {
         public static readonly string[] NPC_ARCHETYPES = new string[] {
-            "Worker", "Policeman", "Student", "Businessman", "Senior", "Guardian", "Homeless",
-            "Hobo_Furgrim", "Hobo_KolotukFranz", "Hobo_SmradochDan", "Hobo_Shocky", "Hobo_Dedek",
-            "Hobo_Peta", "Hobo_Medved", "Hobo_Baron", "Hobo_Valoun", "Hobo_Brekeke", "Hobo_SilenaEdit",
-            "Hobo_PetrMelicharek", "Hobo_Cica", "Hobo_Polda", "Hobo_Ruda", "Specific_Anatoly",
-            "Specific_Hanicka", "Specific_IrenaSkrabisova", "Specific_PorucikHajek", "Specific_MagdaMazalova",
-            "Specific_PaterBurian", "Specific_Bruno", "NPC_M_Commoner1", "NPC_M_Asertivni",
-            "NPC_F_Asertivni", "NPC_M_Balik", "NPC_M_Socka", "NPC_M_Pohodar", "NPC_M_Introvert",
-            "NPC_F_Strelenka", "NPC_M_StudentStandard", "NPC_F_StudentStandard", "NPC_M_TeenagerDrzoun",
-            "NPC_F_TeenagerKrava", "NPC_M_TeenagerNerd", "NPC_F_Pipina", "NPC_M_MrzutyDedek",
-            "NPC_F_MrzutaBabka", "NPC_M_VelkyPan", "NPC_F_Managerka", "NPC_M_BullyUniversal",
-            "Specific_NPC_BullyJanysek", "NPC_M_HoboZmrd", "NPC_M_SocPatrol", "NPC_M_PolicajtUniversal",
-            "Specific_NPC_PolicajtRukavicka", "NPC_M_OstrahaUniversal", "Specific_NPC_M_OstrahaBaumax",
-            "Resident_M_Normal", "Resident_F_Normal", "Resident_M_Geront", "Resident_F_Geront",
-            "Resident_M_Child", "Resident_F_Child", "Resident_M_PanCharvat", "Inside_PanKrejci",
-            "Inside_SlecnaMagda", "Personal_M_Normal", "Personal_M_Karel", "NPC_M_HuliBrk",
-            "NPC_M_Sektar", "NPC_F_Introvert", "NPC_M_Nerd", "NPC_M_StudentTech", "NPC_F_StudentkaSoc",
-            "Specific_StandaGrznar", "Specific_Emka", "Hobo_Horor", "Hobo_Meisner", "Hobo_Monty",
-            "Inside_Prodavac1", "Inside_Prodavac2", "Inside_Trafikant1", "Inside_Hajzlbaba1",
-            "Inside_PolicistaVeSluzbe", "Specific_BarmanShishaBar", "Specific_BarmanPajzl",
-            "Specific_Master", "Inside_Security1", "NPC_M_Fanda", "Specific_Smelar", "Inside_Prodavac3",
-            "Specific_MartinBach", "Specific_Kocour", "Specific_Chef", "Specific_LubosHollzer",
-            "NPC_M_SocialButterfly", "Specific_LiborPetula", "Specific_SestraAnezka", "Specific_Loudova",
-            "Specific_ZichVedouci", "Specific_Ivan", "Inside_Worker1", "Specific_Kotler",
-            "Specific_Kadlec", "Specific_BratrMarek", "Specific_DrKrasny", "Inside_ZamestnanecEvropy2",
-            "Inside_Kinometropol", "Inside_Charvat", "Inside_CiziMuz", "Inside_ObsluhaBenzinka",
-            "Inside_Resident_M", "Hobo_Drax", "Hobo_Rejsek", "Hobo_Festr", "Hobo_Dog",
-            "Hobo_UnknownDog", "Hobo_Majsner", "Hobo_Vanga", "Hobo_Jolanda", "Hobo_Langos",
-            "Hobo_Kentus", "Hobo_Koblih"
+            "NPC_M_ChaserWorker", "NPC_M_ChaserResident", "NPC_M_ChaserGauner", "Specific_Dory",
+            "Specific_Ilona", "Specific_Hektor", "Pig_Quest", "Hobo_Furgrim", "Hobo_KolotukFranz",
+            "Hobo_SmradochDan", "Hobo_Shocky", "Hobo_Dedek", "Hobo_Peta", "Hobo_Medved", "NPC_M_Easy",
+            "Hobo_Valoun", "Hobo_Brekeke", "Hobo_SilenaEdit", "Hobo_PetrMelicharek", "Hobo_Cica",
+            "Hobo_Polda", "Hobo_Ruda", "Specific_Anatoly", "Specific_Hanicka", "Specific_IrenaSkrabisova",
+            "Specific_PorucikHajek", "Specific_MagdaMazalova", "Specific_PaterBurian", "Specific_Bruno",
+            "NPC_M_Medium", "NPC_M_Asertivni", "NPC_M_Hard", "NPC_M_Balik", "NPC_M_Socka", "NPC_F_Easy",
+            "NPC_F_Medium", "NPC_F_Strelenka", "NPC_F_Hard", "Inside_Franta", "Specific_Muller",
+            "Specific_RabinEck", "Hobo_Smrad", "NPC_F_Pipina", "Inside_Lekarnik", "Inside_Barista",
+            "NPC_M_VelkyPan", "Inside_ProdavacDrogerie", "Inside_ProdavacZelezarstvi", "Inside_Utulek",
+            "NPC_M_HoboZmrd", "Inside_ProdavacElektro", "NPC_M_PolicajtUniversal", "Specific_NPC_PolicajtRukavicka",
+            "Inside_ProdavacSekac", "Inside_ProdavacOutdoor", "Specific_Zbysek", "Specific_CallCentrum",
+            "Inside_ProdavacObuv", "Inside_ProdavacOdevy", "Inside_ProdavacItPotreby", "Inside_ProdavacAntik",
+            "Inside_ProdavacAsijskeBistro", "Inside_PanKrejci", "Inside_SlecnaMagda", "Personal_M_Normal",
+            "Personal_M_Karel", "NPC_M_HuliBrk", "NPC_M_Sektar", "NPC_F_Introvert", "NPC_M_Nerd",
+            "NPC_M_StudentTech", "NPC_F_StudentkaSoc", "Specific_StandaGrznar", "Specific_Emka",
+            "Hobo_Horor", "Hobo_Meisner", "Hobo_Monty", "Inside_Prodavac1", "Inside_Prodavac2",
+            "Inside_Trafikant1", "Inside_Hajzlbaba1", "Inside_PolicistaVeSluzbe", "Specific_BarmanShishaBar",
+            "Specific_BarmanPajzl", "Specific_Master", "Inside_Security1", "NPC_M_Fanda",
+            "Specific_Smelar", "Inside_Prodavac3", "Specific_MartinBach", "Specific_Kocour",
+            "Specific_Chef", "Specific_LubosHollzer", "NPC_M_SocialButterfly", "Specific_LiborPetula",
+            "Specific_SestraAnezka", "Specific_Loudova", "Specific_ZichVedouci", "Specific_Ivan",
+            "Inside_Worker1", "Specific_Kotler", "Specific_Kadlec", "Specific_BratrMarek",
+            "Specific_DrKrasny", "Inside_ZamestnanecEvropy2", "Inside_Kinometropol", "Inside_Charvat",
+            "Inside_CiziMuz", "Inside_ObsluhaBenzinka", "Inside_Resident_M", "Hobo_Drax",
+            "Hobo_Rejsek", "Nothing", "Hobo_Festr", "Dog_Rottweiler", "Dog_Shepherd",
+            "Hobo_Majsner", "Hobo_Vanga", "Hobo_Jolanda", "Hobo_Langos", "Hobo_Kentus",
+            "Hobo_Koblih", "Dog_Sheepdog", "Inside_PaniSpurna", "Inside_PanSpurny", "Dog_Quest",
+            "Specific_PetrKubik", "PizzaCustomer1", "PizzaCustomer2", "PizzaCustomer3",
+            "PizzaCustomer4", "PizzaCustomer5", "Specific_Baron", "Specific_Zelinar",
+            "Specific_Antonin", "Hobo_MasaPetrankova", "Hobo_HonzaKonecny", "Hobo_Sergej",
+            "Hobo_Struk", "Hobo_Mahoney", "Hobo_Bigas", "Hobo_Princ", "Hobo_LiborPanika",
+            "Hobo_AlesSmutny", "Hobo_Homola", "Hobo_Herdyn", "Hobo_Mara", "Hobo_Veverka",
+            "Hobo_Zachy", "Hobo_Kardinal", "Hobo_Jankins", "Hobo_Pepic", "Hobo_Bazooka",
+            "Hobo_Rocky", "Hobo_Ferguson", "Hobo_Dezon", "Hobo_Moiser", "Hobo_Ramsy",
+            "Hobo_Starky", "Hobo_Satanista", "Hobo_Crazy", "Hobo_Kemr", "Hobo_Rasken",
+            "Hobo_Rita", "Specific_Anton", "Hobo_Bond", "Hobo_Britva", "Hobo_Ferenz",
+            "Hobo_Rizek", "Hobo_Leos", "Hobo_Bodom", "Hobo_Miky", "Hobo_Mazal",
+            "Hobo_Viktor", "Hobo_Mako", "Specific_MartinSoucek", "Hobo_Fin", "Hobo_Pajour",
+            "Hobo_Kroll", "Hobo_Ghaul", "Specific_MestskaHlidka", "Specific_PolicistaKvapil",
+            "NPC_Fetch", "Hobo_Chicco", "Hobo_Henry", "Hobo_Frix", "Hobo_Kashee",
+            "Inside_BarmanJiskra", "Hobo_Marty", "Specific_PostaUrednice", "Specific_SlapkaLevna",
+            "Specific_SlapkaFancy", "Specific_SlapkaNormal", "Hobo_Herold"
         };
 
         public static readonly string[] LANGUAGES = new string[] { "zh", "en", "cs", "es", "ja", "fr", "ru", "pl", "de" };
@@ -264,6 +279,21 @@ namespace HoboEX_ModMaker.Models
         public override string ToString() => $"[Condition] {type} {key} {value}";
     }
 
+    public enum ShopType
+    {
+        Null = 0,
+        Shop = 1,
+        DeathShop = 2,
+        Repair = 3
+    }
+
+    public class ShopTypeConverter : EnumConverter
+    {
+        public ShopTypeConverter() : base(typeof(ShopType)) { }
+        public override bool GetStandardValuesSupported(ITypeDescriptorContext context) => true;
+        public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
+    }
+
     public class DialogueOptionJson
     {
         [Category("Identification")]
@@ -277,6 +307,11 @@ namespace HoboEX_ModMaker.Models
         [Category("Display")]
         [DisplayName("Color")]
         public string color { get; set; } = "";
+
+        [Category("Service")]
+        [DisplayName("Shop Type")]
+        [TypeConverter(typeof(ShopTypeConverter))]
+        public ShopType shopType { get; set; } = ShopType.Null;
         
         [Category("Behavior")]
         [DisplayName("Is Exit")]

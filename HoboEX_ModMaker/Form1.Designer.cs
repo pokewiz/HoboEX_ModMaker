@@ -27,6 +27,12 @@
             languageToolStripMenuItem = new ToolStripMenuItem();
             chineseToolStripMenuItem = new ToolStripMenuItem();
             englishToolStripMenuItem = new ToolStripMenuItem();
+            toolsToolStripMenuItem = new ToolStripMenuItem();
+            previewToolStripMenuItem = new ToolStripMenuItem();
+            syncL10nToolStripMenuItem = new ToolStripMenuItem();
+            aiL10nToolStripMenuItem = new ToolStripMenuItem();
+            aiSettingsToolStripMenuItem = new ToolStripMenuItem();
+            splitContainerMain = new SplitContainer();
             splitContainer1 = new SplitContainer();
             treeView1 = new TreeView();
             contextMenuStrip1 = new ContextMenuStrip(components);
@@ -34,13 +40,22 @@
             addReactionToolStripMenuItem = new ToolStripMenuItem();
             addActionToolStripMenuItem = new ToolStripMenuItem();
             addConditionToolStripMenuItem = new ToolStripMenuItem();
-            addL10nToolStripMenuItem = new ToolStripMenuItem(); // New
+            addL10nToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
+            copyToolStripMenuItem = new ToolStripMenuItem();
+            cutToolStripMenuItem = new ToolStripMenuItem();
+            pasteToolStripMenuItem = new ToolStripMenuItem();
+            toolStripSeparator2 = new ToolStripSeparator();
             deleteToolStripMenuItem = new ToolStripMenuItem();
             propertyGrid1 = new PropertyGrid();
+            txtConsole = new RichTextBox();
             statusStrip1 = new StatusStrip();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             menuStrip1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)splitContainerMain).BeginInit();
+            splitContainerMain.Panel1.SuspendLayout();
+            splitContainerMain.Panel2.SuspendLayout();
+            splitContainerMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
             splitContainer1.Panel1.SuspendLayout();
             splitContainer1.Panel2.SuspendLayout();
@@ -51,7 +66,7 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, languageToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, languageToolStripMenuItem, toolsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1008, 25);
@@ -114,10 +129,63 @@
             englishToolStripMenuItem.Text = "English";
             englishToolStripMenuItem.Click += englishToolStripMenuItem_Click;
             // 
+            // toolsToolStripMenuItem
+            // 
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { previewToolStripMenuItem, syncL10nToolStripMenuItem, aiL10nToolStripMenuItem, aiSettingsToolStripMenuItem });
+            toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
+            toolsToolStripMenuItem.Size = new Size(52, 21);
+            toolsToolStripMenuItem.Text = "Tools";
+            // 
+            // previewToolStripMenuItem
+            // 
+            previewToolStripMenuItem.Name = "previewToolStripMenuItem";
+            previewToolStripMenuItem.Size = new Size(177, 22);
+            previewToolStripMenuItem.Text = "Preview Dialog";
+            previewToolStripMenuItem.Click += previewToolStripMenuItem_Click;
+            // 
+            // syncL10nToolStripMenuItem
+            // 
+            syncL10nToolStripMenuItem.Name = "syncL10nToolStripMenuItem";
+            syncL10nToolStripMenuItem.Size = new Size(177, 22);
+            syncL10nToolStripMenuItem.Text = "Sync Text to L10n";
+            syncL10nToolStripMenuItem.Click += syncL10nToolStripMenuItem_Click;
+            // 
+            // aiL10nToolStripMenuItem
+            // 
+            aiL10nToolStripMenuItem.Name = "aiL10nToolStripMenuItem";
+            aiL10nToolStripMenuItem.Size = new Size(177, 22);
+            aiL10nToolStripMenuItem.Text = "AI Translate (ZH)";
+            aiL10nToolStripMenuItem.Click += aiL10nToolStripMenuItem_Click;
+            // 
+            // aiSettingsToolStripMenuItem
+            // 
+            aiSettingsToolStripMenuItem.Name = "aiSettingsToolStripMenuItem";
+            aiSettingsToolStripMenuItem.Size = new Size(177, 22);
+            aiSettingsToolStripMenuItem.Text = "AI Settings";
+            aiSettingsToolStripMenuItem.Click += aiSettingsToolStripMenuItem_Click;
+            // 
+            // splitContainerMain
+            // 
+            splitContainerMain.Dock = DockStyle.Fill;
+            splitContainerMain.Location = new Point(0, 25);
+            splitContainerMain.Name = "splitContainerMain";
+            splitContainerMain.Orientation = Orientation.Horizontal;
+            // 
+            // splitContainerMain.Panel1
+            // 
+            splitContainerMain.Panel1.Controls.Add(splitContainer1);
+            // 
+            // splitContainerMain.Panel2
+            // 
+            splitContainerMain.Panel2.Controls.Add(txtConsole);
+            splitContainerMain.Size = new Size(1008, 804);
+            splitContainerMain.SplitterDistance = 666;
+            splitContainerMain.TabIndex = 3;
+            // 
             // splitContainer1
             // 
             splitContainer1.Dock = DockStyle.Fill;
-            splitContainer1.Location = new Point(0, 25);
+            splitContainer1.Location = new Point(0, 0);
             splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -127,8 +195,8 @@
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(propertyGrid1);
-            splitContainer1.Size = new Size(1008, 804);
-            splitContainer1.SplitterDistance = 336;
+            splitContainer1.Size = new Size(1008, 666);
+            splitContainer1.SplitterDistance = 333;
             splitContainer1.TabIndex = 1;
             // 
             // treeView1
@@ -137,62 +205,91 @@
             treeView1.Dock = DockStyle.Fill;
             treeView1.Location = new Point(0, 0);
             treeView1.Name = "treeView1";
-            treeView1.Size = new Size(336, 804);
+            treeView1.Size = new Size(333, 666);
             treeView1.TabIndex = 0;
             treeView1.AfterSelect += treeView1_AfterSelect;
             treeView1.NodeMouseClick += treeView1_NodeMouseClick;
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { addOptionToolStripMenuItem, addReactionToolStripMenuItem, addActionToolStripMenuItem, addConditionToolStripMenuItem, addL10nToolStripMenuItem, toolStripSeparator1, deleteToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { addOptionToolStripMenuItem, addReactionToolStripMenuItem, addActionToolStripMenuItem, addConditionToolStripMenuItem, addL10nToolStripMenuItem, toolStripSeparator1, copyToolStripMenuItem, cutToolStripMenuItem, pasteToolStripMenuItem, toolStripSeparator2, deleteToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(161, 142);
+            contextMenuStrip1.Size = new Size(173, 214);
             contextMenuStrip1.Opening += contextMenuStrip1_Opening;
             // 
             // addOptionToolStripMenuItem
             // 
             addOptionToolStripMenuItem.Name = "addOptionToolStripMenuItem";
-            addOptionToolStripMenuItem.Size = new Size(160, 22);
+            addOptionToolStripMenuItem.Size = new Size(172, 22);
             addOptionToolStripMenuItem.Text = "Add Option";
             addOptionToolStripMenuItem.Click += addOptionToolStripMenuItem_Click;
             // 
             // addReactionToolStripMenuItem
             // 
             addReactionToolStripMenuItem.Name = "addReactionToolStripMenuItem";
-            addReactionToolStripMenuItem.Size = new Size(160, 22);
+            addReactionToolStripMenuItem.Size = new Size(172, 22);
             addReactionToolStripMenuItem.Text = "Add Reaction";
             addReactionToolStripMenuItem.Click += addReactionToolStripMenuItem_Click;
             // 
             // addActionToolStripMenuItem
             // 
             addActionToolStripMenuItem.Name = "addActionToolStripMenuItem";
-            addActionToolStripMenuItem.Size = new Size(160, 22);
+            addActionToolStripMenuItem.Size = new Size(172, 22);
             addActionToolStripMenuItem.Text = "Add Action";
             addActionToolStripMenuItem.Click += addActionToolStripMenuItem_Click;
             // 
             // addConditionToolStripMenuItem
             // 
             addConditionToolStripMenuItem.Name = "addConditionToolStripMenuItem";
-            addConditionToolStripMenuItem.Size = new Size(160, 22);
+            addConditionToolStripMenuItem.Size = new Size(172, 22);
             addConditionToolStripMenuItem.Text = "Add Condition";
             addConditionToolStripMenuItem.Click += addConditionToolStripMenuItem_Click;
             // 
             // addL10nToolStripMenuItem
             // 
             addL10nToolStripMenuItem.Name = "addL10nToolStripMenuItem";
-            addL10nToolStripMenuItem.Size = new Size(160, 22);
+            addL10nToolStripMenuItem.Size = new Size(172, 22);
             addL10nToolStripMenuItem.Text = "Add Localization";
             addL10nToolStripMenuItem.Click += addL10nToolStripMenuItem_Click;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(157, 6);
+            toolStripSeparator1.Size = new Size(169, 6);
+            // 
+            // copyToolStripMenuItem
+            // 
+            copyToolStripMenuItem.Name = "copyToolStripMenuItem";
+            copyToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.C;
+            copyToolStripMenuItem.Size = new Size(172, 22);
+            copyToolStripMenuItem.Text = "Copy";
+            copyToolStripMenuItem.Click += copyToolStripMenuItem_Click;
+            // 
+            // cutToolStripMenuItem
+            // 
+            cutToolStripMenuItem.Name = "cutToolStripMenuItem";
+            cutToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.X;
+            cutToolStripMenuItem.Size = new Size(172, 22);
+            cutToolStripMenuItem.Text = "Cut";
+            cutToolStripMenuItem.Click += cutToolStripMenuItem_Click;
+            // 
+            // pasteToolStripMenuItem
+            // 
+            pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
+            pasteToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.V;
+            pasteToolStripMenuItem.Size = new Size(172, 22);
+            pasteToolStripMenuItem.Text = "Paste";
+            pasteToolStripMenuItem.Click += pasteToolStripMenuItem_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(169, 6);
             // 
             // deleteToolStripMenuItem
             // 
             deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
-            deleteToolStripMenuItem.Size = new Size(160, 22);
+            deleteToolStripMenuItem.Size = new Size(172, 22);
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
@@ -201,9 +298,21 @@
             propertyGrid1.Dock = DockStyle.Fill;
             propertyGrid1.Location = new Point(0, 0);
             propertyGrid1.Name = "propertyGrid1";
-            propertyGrid1.Size = new Size(668, 804);
+            propertyGrid1.Size = new Size(671, 666);
             propertyGrid1.TabIndex = 0;
             propertyGrid1.PropertyValueChanged += propertyGrid1_PropertyValueChanged;
+            // 
+            // txtConsole
+            // 
+            txtConsole.BackColor = Color.Black;
+            txtConsole.Dock = DockStyle.Fill;
+            txtConsole.ForeColor = Color.Lime;
+            txtConsole.Location = new Point(0, 0);
+            txtConsole.Name = "txtConsole";
+            txtConsole.ReadOnly = true;
+            txtConsole.Size = new Size(1008, 134);
+            txtConsole.TabIndex = 0;
+            txtConsole.Text = "";
             // 
             // statusStrip1
             // 
@@ -225,7 +334,7 @@
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1008, 851);
-            Controls.Add(splitContainer1);
+            Controls.Add(splitContainerMain);
             Controls.Add(menuStrip1);
             Controls.Add(statusStrip1);
             MainMenuStrip = menuStrip1;
@@ -233,6 +342,10 @@
             Text = "HoboEX Dialogue Editor";
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
+            splitContainerMain.Panel1.ResumeLayout(false);
+            splitContainerMain.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)splitContainerMain).EndInit();
+            splitContainerMain.ResumeLayout(false);
             splitContainer1.Panel1.ResumeLayout(false);
             splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
@@ -256,7 +369,14 @@
         private ToolStripMenuItem languageToolStripMenuItem;
         private ToolStripMenuItem chineseToolStripMenuItem;
         private ToolStripMenuItem englishToolStripMenuItem;
+        private ToolStripMenuItem toolsToolStripMenuItem;
+        private ToolStripMenuItem previewToolStripMenuItem;
+        private ToolStripMenuItem aiL10nToolStripMenuItem;
+        private ToolStripMenuItem aiSettingsToolStripMenuItem;
+        private ToolStripMenuItem syncL10nToolStripMenuItem;
         private SplitContainer splitContainer1;
+        private SplitContainer splitContainerMain;
+        private RichTextBox txtConsole;
         private TreeView treeView1;
         private PropertyGrid propertyGrid1;
         private StatusStrip statusStrip1;
@@ -268,6 +388,10 @@
         private ToolStripMenuItem addConditionToolStripMenuItem;
         private ToolStripMenuItem addL10nToolStripMenuItem; // New
         private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem copyToolStripMenuItem;
+        private ToolStripMenuItem cutToolStripMenuItem;
+        private ToolStripMenuItem pasteToolStripMenuItem;
+        private ToolStripSeparator toolStripSeparator2;
         private ToolStripMenuItem deleteToolStripMenuItem;
     }
 }

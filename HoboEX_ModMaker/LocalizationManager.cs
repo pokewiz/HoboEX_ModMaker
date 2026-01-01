@@ -8,93 +8,17 @@ namespace HoboEX_ModMaker
     public class AppSettings
     {
         public string Language { get; set; } = "zh-CN";
+        public string AiApiBase { get; set; } = "https://api.siliconflow.cn/v1";
+        public string AiApiKey { get; set; } = "";
+        public string AiModel { get; set; } = "deepseek-ai/DeepSeek-V3";
+        public List<string> AiTargetLanguages { get; set; } = new List<string> { "zh", "en", "cs", "es", "ja", "fr", "ru", "pl", "de" };
     }
 
     public static class LocalizationManager
     {
         private static Dictionary<string, string> _currentStrings = new();
+        public static AppSettings Settings { get; private set; } = new();
         public static string CurrentLanguage { get; private set; } = "zh-CN";
-
-        private static readonly Dictionary<string, Dictionary<string, string>> _languages = new()
-        {
-            ["zh-CN"] = new()
-            {
-                ["MenuFile"] = "文件",
-                ["MenuNew"] = "新建",
-                ["MenuOpen"] = "打开",
-                ["MenuSave"] = "保存",
-                ["MenuSaveAs"] = "另存为",
-                ["MenuLanguage"] = "语言",
-                ["RootNode"] = "对话根节点",
-                ["Ready"] = "就绪",
-                ["NewFileCreated"] = "已创建新对话文件",
-                ["FileOpened"] = "已打开文件: {0}",
-                ["FileSaved"] = "已保存文件: {0}",
-                ["ContextAddNPC"] = "添加 NPC 对话",
-                ["ContextAddOption"] = "添加选项",
-                ["ContextAddReaction"] = "添加 NPC 回复",
-                ["ContextAddAction"] = "添加动作",
-                ["ContextAddCondition"] = "添加条件",
-                ["ContextDelete"] = "删除",
-                ["NodeActions"] = "执行动作",
-                ["NodeConditions"] = "触发条件",
-                ["NodeL10n"] = "本地化文本",
-                ["ContextAddL10n"] = "添加语言文本",
-                ["Error"] = "错误",
-                ["LoadError"] = "加载文件失败: {0}",
-                ["SaveError"] = "保存文件失败: {0}",
-                ["CategoryBasic"] = "基础",
-                ["CategoryIdentification"] = "身份识别",
-                ["CategoryDisplay"] = "显示",
-                ["CategoryBehavior"] = "行为"
-            },
-            ["en-US"] = new()
-            {
-                ["MenuFile"] = "File",
-                ["MenuNew"] = "New",
-                ["MenuOpen"] = "Open",
-                ["MenuSave"] = "Save",
-                ["MenuSaveAs"] = "Save As",
-                ["MenuLanguage"] = "Language",
-                ["RootNode"] = "Dialogues Root",
-                ["Ready"] = "Ready",
-                ["NewFileCreated"] = "New Dialogue File Created",
-                ["FileOpened"] = "Opened: {0}",
-                ["FileSaved"] = "Saved: {0}",
-                ["ContextAddNPC"] = "Add NPC Dialogue",
-                ["ContextAddOption"] = "Add Option",
-                ["ContextAddReaction"] = "Add Reaction",
-                ["ContextAddAction"] = "Add Action",
-                ["ContextAddCondition"] = "Add Condition",
-                ["ContextDelete"] = "Delete",
-                ["NodeActions"] = "Actions",
-                ["NodeConditions"] = "Conditions",
-                ["NodeL10n"] = "Localization",
-                ["ContextAddL10n"] = "Add Language Text",
-                ["Error"] = "Error",
-                ["LoadError"] = "Failed to load: {0}",
-                ["SaveError"] = "Failed to save: {0}",
-                ["CategoryBasic"] = "Basic",
-                ["CategoryIdentification"] = "Identification",
-                ["CategoryDisplay"] = "Display",
-                ["CategoryBehavior"] = "Behavior"
-            }
-        };
-
-        public static void SetLanguage(string langCode)
-        {
-            if (_languages.ContainsKey(langCode))
-            {
-                CurrentLanguage = langCode;
-                _currentStrings = _languages[langCode];
-                SaveSettings();
-            }
-        }
-
-        public static string Get(string key)
-        {
-            return _currentStrings.TryGetValue(key, out var val) ? val : key;
-        }
 
         private static string SettingsPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
@@ -106,7 +30,11 @@ namespace HoboEX_ModMaker
                 {
                     var json = File.ReadAllText(SettingsPath);
                     var settings = JsonSerializer.Deserialize<AppSettings>(json);
-                    if (settings != null) SetLanguage(settings.Language);
+                    if (settings != null)
+                    {
+                        Settings = settings;
+                        SetLanguage(settings.Language);
+                    }
                 }
                 else
                 {
@@ -116,15 +44,113 @@ namespace HoboEX_ModMaker
             catch { SetLanguage("zh-CN"); }
         }
 
-        private static void SaveSettings()
+        public static void SetLanguage(string langCode)
+        {
+            CurrentLanguage = langCode;
+            string fileName = $"lang_{langCode}.json";
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+            
+            if (File.Exists(path))
+            {
+                try
+                {
+                    var json = File.ReadAllText(path);
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                    if (dict != null)
+                    {
+                        _currentStrings = dict;
+                    }
+                }
+                catch { }
+            }
+            else
+            {
+                // Fallback or empty if not found
+                if (_currentStrings == null || _currentStrings.Count == 0)
+                {
+                    // Minimal fallback
+                    _currentStrings = new Dictionary<string, string>();
+                }
+            }
+            SaveSettings();
+        }
+
+        public static string Get(string key)
+        {
+            return _currentStrings.TryGetValue(key, out var val) ? val : key;
+        }
+
+        public static void SaveSettings()
         {
             try
             {
-                var settings = new AppSettings { Language = CurrentLanguage };
-                var json = JsonSerializer.Serialize(settings);
+                Settings.Language = CurrentLanguage;
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                var json = JsonSerializer.Serialize(Settings, options);
                 File.WriteAllText(SettingsPath, json);
             }
             catch { }
         }
+        
+        /// <summary>
+        /// Looks up localized strings for property names and descriptions.
+        /// Key format: Prop_{ClassName}_{PropName} or Desc_{ClassName}_{PropName}
+        /// Context format: Prop_{ClassName}_{Context}_{PropName} or Desc_{ClassName}_{Context}_{PropName}
+        /// Fallback to Prop_Common_{PropName} or Desc_Common_{PropName}
+        /// Trie: exact match, PascalCase, ID shortcut.
+        /// </summary>
+        public static (string displayName, string description) GetPropertyInfo(string className, string propName, string typeContext = null)
+        {
+            // Generate candidates: exact, PascalCase, ID-special
+            var candidates = new List<string> { propName };
+            if (propName.Length > 0 && char.IsLower(propName[0]))
+            {
+                candidates.Add(char.ToUpper(propName[0]) + propName.Substring(1));
+            }
+            if (string.Equals(propName, "id", StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.Add("ID");
+            }
+
+            foreach (var suffix in candidates)
+            {
+                string name = null;
+                string desc = null;
+
+                // 1. Try Context Specific Class (e.g. Desc_Action_Pay_Value)
+                if (!string.IsNullOrEmpty(typeContext))
+                {
+                    string contextNameKey = $"Prop_{className}_{typeContext}_{suffix}";
+                    string contextDescKey = $"Desc_{className}_{typeContext}_{suffix}";
+                    
+                    if (_currentStrings.TryGetValue(contextNameKey, out var cn)) name = cn;
+                    if (_currentStrings.TryGetValue(contextDescKey, out var cd)) desc = cd;
+                }
+
+                // 2. Try Specific Class (e.g. Desc_Action_Value)
+                if (name == null)
+                {
+                    string dKey = $"Prop_{className}_{suffix}";
+                    if (_currentStrings.TryGetValue(dKey, out var n)) name = n;
+                }
+                if (desc == null)
+                {
+                    string descKey = $"Desc_{className}_{suffix}";
+                    if (_currentStrings.TryGetValue(descKey, out var d)) desc = d;
+                }
+
+                // 3. Try Common Fallback
+                if (name == null) _currentStrings.TryGetValue($"Prop_Common_{suffix}", out name);
+                if (desc == null) _currentStrings.TryGetValue($"Desc_Common_{suffix}", out desc);
+
+                if (name != null || desc != null)
+                {
+                    return (name ?? propName, desc ?? "");
+                }
+            }
+            
+            return (propName, "");
+        }
     }
 }
+
