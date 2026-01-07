@@ -32,10 +32,12 @@
             syncL10nToolStripMenuItem = new ToolStripMenuItem();
             aiL10nToolStripMenuItem = new ToolStripMenuItem();
             aiSettingsToolStripMenuItem = new ToolStripMenuItem();
+            openModToolStripMenuItem = new ToolStripMenuItem();
             splitContainerMain = new SplitContainer();
             splitContainer1 = new SplitContainer();
             treeView1 = new TreeView();
             contextMenuStrip1 = new ContextMenuStrip(components);
+            addFileToolStripMenuItem = new ToolStripMenuItem();
             addOptionToolStripMenuItem = new ToolStripMenuItem();
             addReactionToolStripMenuItem = new ToolStripMenuItem();
             addActionToolStripMenuItem = new ToolStripMenuItem();
@@ -75,7 +77,7 @@
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { newToolStripMenuItem, openToolStripMenuItem, saveToolStripMenuItem, saveAsToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { newToolStripMenuItem, openToolStripMenuItem, openModToolStripMenuItem, saveToolStripMenuItem, saveAsToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(39, 21);
             fileToolStripMenuItem.Text = "File";
@@ -89,10 +91,15 @@
             // 
             // openToolStripMenuItem
             // 
-            openToolStripMenuItem.Name = "openToolStripMenuItem";
-            openToolStripMenuItem.Size = new Size(121, 22);
             openToolStripMenuItem.Text = "Open";
             openToolStripMenuItem.Click += openToolStripMenuItem_Click;
+            // 
+            // openModToolStripMenuItem
+            // 
+            openModToolStripMenuItem.Name = "openModToolStripMenuItem";
+            openModToolStripMenuItem.Size = new Size(130, 22);
+            openModToolStripMenuItem.Text = "Open Mod";
+            openModToolStripMenuItem.Click += openModToolStripMenuItem_Click;
             // 
             // saveToolStripMenuItem
             // 
@@ -212,10 +219,17 @@
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { addOptionToolStripMenuItem, addReactionToolStripMenuItem, addActionToolStripMenuItem, addConditionToolStripMenuItem, addL10nToolStripMenuItem, toolStripSeparator1, copyToolStripMenuItem, cutToolStripMenuItem, pasteToolStripMenuItem, toolStripSeparator2, deleteToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { addFileToolStripMenuItem, addOptionToolStripMenuItem, addReactionToolStripMenuItem, addActionToolStripMenuItem, addConditionToolStripMenuItem, addL10nToolStripMenuItem, toolStripSeparator1, copyToolStripMenuItem, cutToolStripMenuItem, pasteToolStripMenuItem, toolStripSeparator2, deleteToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
             contextMenuStrip1.Size = new Size(173, 214);
             contextMenuStrip1.Opening += contextMenuStrip1_Opening;
+            // 
+            // addFileToolStripMenuItem
+            // 
+            addFileToolStripMenuItem.Name = "addFileToolStripMenuItem";
+            addFileToolStripMenuItem.Size = new Size(172, 22);
+            addFileToolStripMenuItem.Text = "Add File";
+            addFileToolStripMenuItem.Click += addFileToolStripMenuItem_Click;
             // 
             // addOptionToolStripMenuItem
             // 
@@ -364,6 +378,7 @@
         private ToolStripMenuItem fileToolStripMenuItem;
         private ToolStripMenuItem newToolStripMenuItem;
         private ToolStripMenuItem openToolStripMenuItem;
+        private ToolStripMenuItem openModToolStripMenuItem;
         private ToolStripMenuItem saveToolStripMenuItem;
         private ToolStripMenuItem saveAsToolStripMenuItem;
         private ToolStripMenuItem languageToolStripMenuItem;
@@ -382,6 +397,7 @@
         private StatusStrip statusStrip1;
         private ToolStripStatusLabel toolStripStatusLabel1;
         private ContextMenuStrip contextMenuStrip1;
+        private ToolStripMenuItem addFileToolStripMenuItem;
         private ToolStripMenuItem addOptionToolStripMenuItem;
         private ToolStripMenuItem addReactionToolStripMenuItem;
         private ToolStripMenuItem addActionToolStripMenuItem;

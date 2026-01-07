@@ -14,6 +14,7 @@ namespace HoboEX_ModMaker
     {
         private string currentFilePath = null;
         private DialogueFileRoot currentRoot = null;
+        private RootJson currentItems = null;
         private object clipboardData = null;
 
         public Form1()
@@ -27,7 +28,20 @@ namespace HoboEX_ModMaker
             LocalizedTypeDescriptorProvider.Register(typeof(DialogueActionJson));
             LocalizedTypeDescriptorProvider.Register(typeof(DialogueConditionJson));
             LocalizedTypeDescriptorProvider.Register(typeof(NpcDialogueJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(NpcDialogueJson));
             LocalizedTypeDescriptorProvider.Register(typeof(L10nItem));
+
+            // Register Items.json types
+            LocalizedTypeDescriptorProvider.Register(typeof(ConsumableJsonItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(ScrapJsonItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(BagJsonItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(GearJsonItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(RecipeJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(ShopJsonItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(PackageTableJsonItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(SalvagePatternJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(ArchetypeJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(ReputationJson));
 
             // Resize PropertyGrid Description Area
             foreach (Control c in propertyGrid1.Controls)
@@ -58,25 +72,38 @@ namespace HoboEX_ModMaker
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
+            // Global shortcuts
             if (e.Control && e.KeyCode == Keys.S)
             {
                 e.SuppressKeyPress = true;
                 saveToolStripMenuItem_Click(sender, e);
+                return;
             }
-            else if (e.Control && e.KeyCode == Keys.C)
+            if (e.KeyCode == Keys.F5)
             {
                 e.SuppressKeyPress = true;
-                copyToolStripMenuItem_Click(sender, e);
+                previewToolStripMenuItem_Click(sender, e);
+                return;
             }
-            else if (e.Control && e.KeyCode == Keys.X)
+
+            // TreeView shortcuts - only intercept when TreeView is active
+            if (treeView1.Focused)
             {
-                e.SuppressKeyPress = true;
-                cutToolStripMenuItem_Click(sender, e);
-            }
-            else if (e.Control && e.KeyCode == Keys.V)
-            {
-                e.SuppressKeyPress = true;
-                pasteToolStripMenuItem_Click(sender, e);
+                if (e.Control && e.KeyCode == Keys.C)
+                {
+                    e.SuppressKeyPress = true;
+                    copyToolStripMenuItem_Click(sender, e);
+                }
+                else if (e.Control && e.KeyCode == Keys.X)
+                {
+                    e.SuppressKeyPress = true;
+                    cutToolStripMenuItem_Click(sender, e);
+                }
+                else if (e.Control && e.KeyCode == Keys.V)
+                {
+                    e.SuppressKeyPress = true;
+                    pasteToolStripMenuItem_Click(sender, e);
+                }
             }
         }
 
@@ -94,6 +121,7 @@ namespace HoboEX_ModMaker
             aiL10nToolStripMenuItem.Text = LocalizationManager.Get("MenuAiL10n");
             syncL10nToolStripMenuItem.Text = LocalizationManager.Get("MenuSyncL10n");
             aiSettingsToolStripMenuItem.Text = LocalizationManager.Get("AiSettingsTitle");
+            openModToolStripMenuItem.Text = LocalizationManager.Get("MenuOpenMod") ?? "Open Mod";
 
             // Status
             toolStripStatusLabel1.Text = LocalizationManager.Get("Ready");
@@ -121,27 +149,113 @@ namespace HoboEX_ModMaker
             }
         }
 
+        private bool IsModFolderMode()
+        {
+            return !string.IsNullOrEmpty(currentFilePath) && Directory.Exists(currentFilePath);
+        }
+
         private void UpdateTree()
         {
             treeView1.BeginUpdate();
             treeView1.Nodes.Clear();
-
-            var rootNode = new TreeNode(LocalizationManager.Get("RootNode")) { Tag = currentRoot };
-            treeView1.Nodes.Add(rootNode);
-
-            foreach (var npc in currentRoot.dialogues)
+            
+            bool isModFolder = IsModFolderMode();
+                    if (isModFolder && currentItems != null)
             {
-                var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
-                rootNode.Nodes.Add(npcNode);
+                // Root is the Mod Folder (Parent of options)
+                string optionsPath = currentFilePath;
+                string modPath = Directory.GetParent(optionsPath)?.FullName ?? optionsPath;
+                string modName = Path.GetFileName(modPath);
 
-                foreach (var opt in npc.entryOptions)
+                var modRootNode = new TreeNode(modName) { Tag = null }; // Mod Root
+                treeView1.Nodes.Add(modRootNode);
+
+                // 1. Items.json Node
+                var itemsNode = new TreeNode("items.json") { Tag = currentItems, ImageKey = "file", SelectedImageKey = "file" };
+                modRootNode.Nodes.Add(itemsNode);
+
+                void AddCategory<T>(string key, IEnumerable<T> items)
                 {
-                    AddOptionNode(npcNode, opt);
+                    if (items == null || !items.Any()) return;
+                    string title = LocalizationManager.Get(key) ?? key.Replace("Node", "");
+                    var catNode = new TreeNode(title) { Tag = items, ImageKey = "folder", SelectedImageKey = "folder" };
+                    itemsNode.Nodes.Add(catNode);
+                    foreach (var item in items)
+                    {
+                        catNode.Nodes.Add(new TreeNode(item.ToString()) { Tag = item });
+                    }
                 }
+
+                AddCategory("NodeConsumables", currentItems.consumables);
+                AddCategory("NodeScraps", currentItems.scraps);
+                AddCategory("NodeBags", currentItems.bags);
+                AddCategory("NodeGears", currentItems.gears);
+                AddCategory("NodeRecipes", currentItems.recipes);
+                AddCategory("NodeShops", currentItems.shops);
+                AddCategory("NodeSells", currentItems.sells);
+                AddCategory("NodePackages", currentItems.packageTables);
+                AddCategory("NodeSalvage", currentItems.salvagePatterns);
+                AddCategory("NodeArchetypes", currentItems.archetypes);
+                AddCategory("NodeReputations", currentItems.reputations);
+
+                // 2. Options Folder Node
+                string optionsName = Path.GetFileName(optionsPath);
+                var optionsNode = new TreeNode(optionsName) { Tag = currentRoot, ImageKey = "folder", SelectedImageKey = "folder" };
+                modRootNode.Nodes.Add(optionsNode);
+
+                // Fill Options Content
+                AddOptionsContent(optionsNode);
+                
+                modRootNode.Expand();
+            }
+            else
+            {
+                // Normal/Empty Root
+                string rootText = string.IsNullOrEmpty(currentFilePath) 
+                    ? LocalizationManager.Get("RootNode") 
+                    : Path.GetFileName(currentFilePath);
+                var rootNode = new TreeNode(rootText) { Tag = currentRoot };
+                treeView1.Nodes.Add(rootNode);
+
+                AddOptionsContent(rootNode);
             }
 
-            treeView1.ExpandAll();
             treeView1.EndUpdate();
+        }
+
+        private void AddOptionsContent(TreeNode rootNode)
+        {
+            if (IsModFolderMode())
+            {
+                var files = Directory.GetFiles(currentFilePath, "*.json", SearchOption.TopDirectoryOnly)
+                    .Where(f => !f.EndsWith("_l10n.json"))
+                    .OrderBy(f => f)
+                    .ToList();
+
+                foreach (var file in files)
+                {
+                    string fileName = Path.GetFileName(file);
+                    var fileNode = new TreeNode(fileName) { Tag = file };
+                    rootNode.Nodes.Add(fileNode);
+
+                    var npcs = currentRoot.dialogues.Where(d => d.SourceFilePath == file);
+                    foreach (var npc in npcs)
+                    {
+                        var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
+                        fileNode.Nodes.Add(npcNode);
+                        foreach (var opt in npc.entryOptions) AddOptionNode(npcNode, opt);
+                    }
+                }
+            }
+            else
+            {
+                foreach (var npc in currentRoot.dialogues)
+                {
+                    var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
+                    rootNode.Nodes.Add(npcNode);
+                    foreach (var opt in npc.entryOptions) AddOptionNode(npcNode, opt);
+                }
+            }
         }
 
         private void AddOptionNode(TreeNode parent, DialogueOptionJson opt)
@@ -164,7 +278,6 @@ namespace HoboEX_ModMaker
                 node.Nodes.Add(condsNode);
                 foreach (var cond in opt.conditions)
                     condsNode.Nodes.Add(new TreeNode(cond.ToString()) { Tag = cond });
-                condsNode.Expand();
             }
 
             // Actions Group
@@ -174,7 +287,6 @@ namespace HoboEX_ModMaker
                 node.Nodes.Add(actsNode);
                 foreach (var act in opt.actions)
                     actsNode.Nodes.Add(new TreeNode(act.ToString()) { Tag = act });
-                actsNode.Expand();
             }
 
             // L10n Group
@@ -184,11 +296,16 @@ namespace HoboEX_ModMaker
                 node.Nodes.Add(l10nNode);
                 foreach (var kvp in opt.l10n)
                     l10nNode.Nodes.Add(new TreeNode(new L10nItem(kvp.Key, kvp.Value, opt).ToString()) { Tag = new L10nItem(kvp.Key, kvp.Value, opt) });
-                l10nNode.Expand();
+                //l10nNode.Expand();
             }
 
             foreach (var react in opt.reactions)
                 AddReactionNode(node, react);
+        }
+
+        private void RecalculateNodeText(TreeNode node)
+        {
+             if (node.Tag != null) node.Text = node.Tag.ToString();
         }
 
         private void AddReactionNode(TreeNode parent, DialogueReactionJson react)
@@ -211,7 +328,6 @@ namespace HoboEX_ModMaker
                 node.Nodes.Add(actsNode);
                 foreach (var act in react.actions)
                     actsNode.Nodes.Add(new TreeNode(act.ToString()) { Tag = act });
-                actsNode.Expand();
             }
 
             // L10n Group
@@ -221,7 +337,7 @@ namespace HoboEX_ModMaker
                 node.Nodes.Add(l10nNode);
                 foreach (var kvp in react.l10n)
                     l10nNode.Nodes.Add(new TreeNode(new L10nItem(kvp.Key, kvp.Value, react).ToString()) { Tag = new L10nItem(kvp.Key, kvp.Value, react) });
-                l10nNode.Expand();
+                //l10nNode.Expand();
             }
 
             foreach (var opt in react.options)
@@ -246,12 +362,54 @@ namespace HoboEX_ModMaker
             var node = treeView1.SelectedNode;
             if (node != null && node.Tag != null)
             {
+                // ID Duplication Check
+                if (e.ChangedItem.PropertyDescriptor.Name == "id" && e.OldValue != e.ChangedItem.Value)
+                {
+                    int newId = (int)e.ChangedItem.Value;
+                    bool isDuplicate = false;
+                    
+                    // Shared Pool: Consumables, Scraps, Bags, Gears
+                    // If the item falls into this category, check ALL lists
+                    bool isSharedType = node.Tag is ConsumableJsonItem || node.Tag is ScrapJsonItem || 
+                                        node.Tag is BagJsonItem || node.Tag is GearJsonItem;
+
+                    if (isSharedType)
+                    {
+                        var allIds = GetAllGlobalIds();
+                        // Count occurrences. If newId appears more than once (meaning it's already used elsewhere in the pool),
+                        // or if it's new and already exists in pool.
+                        // Since we just changed the value, 'currentItems' currently holds the object with the *new* value (property grid updates reference).
+                        // Wait, property grid updates the object directly. So the object ALREADY has newId.
+                        // We need to check if ANY OTHER object has this ID.
+                        
+                        int count = 0;
+                        count += currentItems.consumables.Count(x => x.id == newId);
+                        count += currentItems.scraps.Count(x => x.id == newId);
+                        count += currentItems.bags.Count(x => x.id == newId);
+                        count += currentItems.gears.Count(x => x.id == newId);
+                        
+                        if (count > 1) isDuplicate = true; // 1 occurrence is itself
+                    }
+                    else if (node.Tag is RecipeJson && currentItems.recipes.Any(x => x != node.Tag && x.id == newId)) isDuplicate = true;
+                    else if (node.Tag is SalvagePatternJson && currentItems.salvagePatterns.Any(x => x != node.Tag && x.id == newId)) isDuplicate = true;
+                    // ... other types checking ...
+
+                    if (isDuplicate)
+                    {
+                        MessageBox.Show($"ID {newId} already exists in the Global Item Pool (Consumables/Scraps/Bags/Gears)! Reverting...", "Duplicate ID", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        e.ChangedItem.PropertyDescriptor.SetValue(node.Tag, e.OldValue);
+                        return;
+                    }
+                }
+
                 if (node.Tag is L10nItem item)
                 {
                     if (item.Parent is DialogueOptionJson opt) opt.l10n[item.Language] = item.Text;
                     else if (item.Parent is DialogueReactionJson react) react.l10n[item.Language] = react.l10n[item.Language] = item.Text;
                 }
-                node.Text = node.Tag.ToString() ?? "Entity";
+                
+                // Recalculate text
+                RecalculateNodeText(node);
                 
                 // If it's the main text of an option/reaction, we might want to refresh the parent label
                 if (node.Parent != null)
@@ -294,6 +452,103 @@ namespace HoboEX_ModMaker
                         MessageBox.Show(string.Format(LocalizationManager.Get("LoadError"), ex.Message), LocalizationManager.Get("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
+            }
+        }
+
+        private void openModToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (FolderBrowserDialog fbd = new FolderBrowserDialog())
+            {
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    string path = fbd.SelectedPath;
+                    string optionsPath = path;
+                    if (Path.GetFileName(path).ToLower() != "options")
+                    {
+                        string subPath = Path.Combine(path, "options");
+                        if (Directory.Exists(subPath)) optionsPath = subPath;
+                        else
+                        {
+                            MessageBox.Show("Selected folder must be 'options' or contain an 'options' subfolder.");
+                            return;
+                        }
+                    }
+
+                    LoadModFolder(optionsPath);
+                }
+            }
+        }
+
+        private void LoadModFolder(string folderPath)
+        {
+            try
+            {
+                currentRoot = new DialogueFileRoot();
+                currentFilePath = folderPath;
+                var files = Directory.GetFiles(folderPath, "*.json", SearchOption.TopDirectoryOnly)
+                    .Where(f => !f.EndsWith("_l10n.json"))
+                    .ToList();
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        string json = File.ReadAllText(file);
+                        var loaded = JsonSerializer.Deserialize<DialogueFileRoot>(json);
+                        if (loaded != null && loaded.dialogues != null)
+                        {
+                            foreach (var npc in loaded.dialogues)
+                            {
+                                npc.SourceFilePath = file; // Store source file path
+                                currentRoot.dialogues.Add(npc);
+                                // Load and sync L10n for THIS specific file's dialogues
+                                string l10nPath = file.Replace(".json", "_l10n.json");
+                                if (File.Exists(l10nPath))
+                                {
+                                    string l10nJson = File.ReadAllText(l10nPath);
+                                    var l10n = JsonSerializer.Deserialize<DialogueL10n>(l10nJson);
+                                    if (l10n != null) SyncL10nToModels(npc, l10n);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Failed to load {file}: {ex.Message}", true);
+                    }
+                }
+
+                
+                // Try to load items.json from parent directory
+                try
+                {
+                    string parentDir = Directory.GetParent(folderPath)?.FullName;
+                    if (!string.IsNullOrEmpty(parentDir))
+                    {
+                        string itemsPath = Path.Combine(parentDir, "items.json");
+                        if (File.Exists(itemsPath))
+                        {
+                            string json = File.ReadAllText(itemsPath);
+                            currentItems = JsonSerializer.Deserialize<RootJson>(json);
+                        }
+                        else
+                        {
+                            currentItems = null;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"Failed to load items.json: {ex.Message}", true);
+                    currentItems = null;
+                }
+
+                UpdateTree();
+                toolStripStatusLabel1.Text = $"Loaded mod folder: {Path.GetFileName(folderPath)}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading mod: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -343,20 +598,63 @@ namespace HoboEX_ModMaker
         {
             try
             {
-                var options = new JsonSerializerOptions
+                // Check if path is actually a directory (happens when using Open Mod)
+                if (Directory.Exists(path))
                 {
-                    WriteIndented = true,
-                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
-                string json = JsonSerializer.Serialize(currentRoot, options);
-                File.WriteAllText(path, json);
-                SaveL10n(path);
+                    // Group dialogues by their source file path
+                    var groups = currentRoot.dialogues
+                        .Where(d => !string.IsNullOrEmpty(d.SourceFilePath))
+                        .GroupBy(d => d.SourceFilePath);
+
+                    int savedCount = 0;
+                    foreach (var group in groups)
+                    {
+                        string filePath = group.Key;
+                        var rootForFile = new DialogueFileRoot { dialogues = group.ToList() };
+                        
+                        SaveFileAndL10n(filePath, rootForFile);
+                        savedCount++;
+                    }
+
+                    if (savedCount > 0)
+                    {
+                        toolStripStatusLabel1.Text = $"Saved {savedCount} files in mod folder.";
+                    }
+                    else
+                    {
+                        // Fallback if no source paths (new NPC added in folder mode)
+                        saveAsToolStripMenuItem_Click(null, null);
+                    }
+                    return;
+                }
+
+                SaveFileAndL10n(path, currentRoot);
                 currentFilePath = path;
                 toolStripStatusLabel1.Text = string.Format(LocalizationManager.Get("FileSaved"), Path.GetFileName(path));
             }
             catch (Exception ex)
             {
                 MessageBox.Show(string.Format(LocalizationManager.Get("SaveError"), ex.Message), LocalizationManager.Get("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SaveFileAndL10n(string path, DialogueFileRoot root)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            string json = JsonSerializer.Serialize(root, options);
+            File.WriteAllText(path, json);
+            
+            // Save L10n specifically for the dialogues in this root
+            var l10n = new DialogueL10n();
+            GatherL10nFromModels(root, l10n);
+            if (l10n.strings.Count > 0)
+            {
+                string l10nPath = path.Replace(".json", "_l10n.json");
+                File.WriteAllText(l10nPath, JsonSerializer.Serialize(l10n, options));
             }
         }
 
@@ -448,8 +746,27 @@ namespace HoboEX_ModMaker
             bool isConditionsNode = node.Text == LocalizationManager.Get("NodeConditions");
             bool isL10nNode = node.Text == (LocalizationManager.Get("NodeL10n") ?? "Localization");
 
+            // Sub-Item Categories
+            bool isConsumables = node.Text == LocalizationManager.Get("NodeConsumables");
+            bool isScraps = node.Text == LocalizationManager.Get("NodeScraps");
+            bool isBags = node.Text == LocalizationManager.Get("NodeBags");
+            bool isGears = node.Text == LocalizationManager.Get("NodeGears");
+            bool isRecipes = node.Text == LocalizationManager.Get("NodeRecipes");
+            bool isShops = node.Text == LocalizationManager.Get("NodeShops");
+            bool isSells = node.Text == LocalizationManager.Get("NodeSells");
+            bool isPackages = node.Text == LocalizationManager.Get("NodePackages");
+            bool isSalvage = node.Text == LocalizationManager.Get("NodeSalvage");
+            bool isArchetypes = node.Text == LocalizationManager.Get("NodeArchetypes");
+            bool isReputations = node.Text == LocalizationManager.Get("NodeReputations");
+
+            object parentTag = node.Tag;
+            bool canAddItem = (isConsumables || isScraps || isBags || isGears || isRecipes || isShops || isSells || isPackages || isSalvage || isArchetypes || isReputations) && currentItems != null;
+
             // 1. Logic States
-            bool canAddOption = tag is DialogueFileRoot || tag is NpcDialogueJson || tag is DialogueReactionJson;
+            bool isModFolder = IsModFolderMode();
+            bool isFileNode = tag is string && !string.IsNullOrEmpty((string)tag);
+
+            bool canAddOption = (tag is DialogueFileRoot && !isModFolder) || isFileNode || tag is NpcDialogueJson || tag is DialogueReactionJson;
             bool canAddReaction = tag is DialogueOptionJson;
             bool canAddAction = tag is DialogueOptionJson || tag is DialogueReactionJson || isActionsNode;
             bool canAddCondition = tag is DialogueOptionJson || isConditionsNode;
@@ -468,11 +785,15 @@ namespace HoboEX_ModMaker
                 else if (clipboardData is DialogueReactionJson && tag is DialogueOptionJson) canPaste = true;
             }
             bool canShowPaste = tag is DialogueOptionJson || tag is DialogueReactionJson || tag is NpcDialogueJson || isActionsNode || isConditionsNode;
-            bool canDelete = !(tag is DialogueFileRoot);
+            bool canDelete = !(tag is DialogueFileRoot) && !isFileNode; // Prevent deleting the file node wrapper itself in mod mode 
 
             // 2. Apply Visibility & Localization
+            bool canAddFile = tag is DialogueFileRoot && isModFolder;
+            addFileToolStripMenuItem.Visible = canAddFile;
+            addFileToolStripMenuItem.Text = LocalizationManager.Get("MenuAddFile") ?? "Add Dialogue File (.json)";
+
             addOptionToolStripMenuItem.Visible = canAddOption;
-            addOptionToolStripMenuItem.Text = tag is DialogueFileRoot ? LocalizationManager.Get("ContextAddNPC") : LocalizationManager.Get("ContextAddOption");
+            addOptionToolStripMenuItem.Text = (tag is DialogueFileRoot || isFileNode) ? LocalizationManager.Get("ContextAddNPC") : LocalizationManager.Get("ContextAddOption");
             
             addReactionToolStripMenuItem.Visible = canAddReaction;
             addReactionToolStripMenuItem.Text = LocalizationManager.Get("ContextAddReaction");
@@ -500,15 +821,23 @@ namespace HoboEX_ModMaker
             deleteToolStripMenuItem.Text = LocalizationManager.Get("ContextDelete");
 
             // 3. Separator Management (Use Available for better Reliability)
-            bool anyAdd = canAddOption || canAddReaction || canAddAction || canAddCondition || canAddL10n;
+            bool anyAdd = canAddOption || canAddReaction || canAddAction || canAddCondition || canAddL10n || canAddItem;
             bool anyEdit = canCopy || canCut || canShowPaste;
             bool anyDelete = canDelete;
+            
+            if (canAddItem)
+            {
+                addOptionToolStripMenuItem.Visible = true;
+                addOptionToolStripMenuItem.Text = LocalizationManager.Get("ContextAddItem") ?? "Add New Item";
+                // Redirect click event if needed or handle carefully in the main handler
+                // Since we reuse the same menu item, we need to check context in the handler
+            }
 
             toolStripSeparator1.Available = anyAdd && (anyEdit || anyDelete);
             toolStripSeparator2.Available = anyEdit && anyDelete;
         }
 
-        private string GenerateUniqueID(TreeNode contextNode, string typeSuffix)
+        private string GenerateUniqueID(TreeNode contextNode, string typeSuffix, HashSet<string>? existingIds = null)
         {
             // Find NPC archetype from ancestors
             string npcName = "UNKNOWN";
@@ -526,9 +855,12 @@ namespace HoboEX_ModMaker
 
             string basePrefix = $"MOD_{npcName.ToUpper()}_{typeSuffix.ToUpper()}";
 
-            // Get all existing IDs in the whole file
-            var existingIds = new HashSet<string>();
-            GatherIds(currentRoot, existingIds);
+            // If no set provided, gather all current IDs in the file
+            if (existingIds == null)
+            {
+                existingIds = new HashSet<string>();
+                GatherIds(currentRoot, existingIds);
+            }
 
             int seq = 1;
             while (existingIds.Contains($"{basePrefix}_{seq}"))
@@ -536,7 +868,9 @@ namespace HoboEX_ModMaker
                 seq++;
             }
 
-            return $"{basePrefix}_{seq}";
+            string finalId = $"{basePrefix}_{seq}";
+            existingIds.Add(finalId); // Important: add to set so subsequent calls in a loop see it
+            return finalId;
         }
 
         private void GatherIds(object root, HashSet<string> ids)
@@ -561,9 +895,59 @@ namespace HoboEX_ModMaker
             }
         }
 
+        private void addFileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (!IsModFolderMode()) return;
+
+            using (Form prompt = new Form())
+            {
+                prompt.Width = 350;
+                prompt.Height = 150;
+                prompt.Text = LocalizationManager.Get("MenuAddFile") ?? "Add New File";
+                prompt.StartPosition = FormStartPosition.CenterParent;
+                prompt.FormBorderStyle = FormBorderStyle.FixedDialog;
+                prompt.MaximizeBox = false;
+
+                Label textLabel = new Label() { Left = 20, Top = 20, Text = "Filename:", Width = 80 };
+                TextBox textBox = new TextBox() { Left = 100, Top = 20, Width = 200 };
+                Button confirmation = new Button() { Text = "Add", Left = 220, Width = 80, Top = 60, DialogResult = DialogResult.OK };
+                
+                prompt.Controls.Add(textBox);
+                prompt.Controls.Add(confirmation);
+                prompt.Controls.Add(textLabel);
+                prompt.AcceptButton = confirmation;
+
+                if (prompt.ShowDialog() == DialogResult.OK)
+                {
+                    string name = textBox.Text.Trim();
+                    if (string.IsNullOrEmpty(name)) return;
+                    if (!name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) name += ".json";
+
+                    string fullPath = Path.Combine(currentFilePath, name);
+                    if (File.Exists(fullPath))
+                    {
+                        MessageBox.Show("File already exists!");
+                        return;
+                    }
+
+                    // Create physical file
+                    var newRoot = new DialogueFileRoot();
+                    var options = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+                    File.WriteAllText(fullPath, JsonSerializer.Serialize(newRoot, options));
+
+                    // Add to current root to show in UI
+                    // We don't necessarily need to add a dummy NPC, but the SourceFilePath needs to exist for the tree
+                    // A simple way is to refresh the whole mod folder or just add a placeholder
+                    LoadModFolder(currentFilePath); 
+                }
+            }
+        }
+
         private void addOptionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var node = treeView1.SelectedNode;
+            if (node == null) return;
+
             if (node.Tag is DialogueFileRoot root)
             {
                 using (var selector = new NpcSelectorForm(DialogueModels.NPC_ARCHETYPES))
@@ -572,6 +956,20 @@ namespace HoboEX_ModMaker
                     {
                         var npc = new NpcDialogueJson { npcArchetype = selector.SelectedArchetype };
                         root.dialogues.Add(npc);
+                        var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
+                        node.Nodes.Add(npcNode);
+                        node.Expand();
+                    }
+                }
+            }
+            else if (node.Tag is string fileTag && !string.IsNullOrEmpty(fileTag))
+            {
+                using (var selector = new NpcSelectorForm(DialogueModels.NPC_ARCHETYPES))
+                {
+                    if (selector.ShowDialog() == DialogResult.OK)
+                    {
+                        var npc = new NpcDialogueJson { npcArchetype = selector.SelectedArchetype, SourceFilePath = fileTag };
+                        currentRoot.dialogues.Add(npc);
                         var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
                         node.Nodes.Add(npcNode);
                         node.Expand();
@@ -592,6 +990,122 @@ namespace HoboEX_ModMaker
                 AddOptionNode(node, opt);
                 node.Expand();
             }
+            // Handle Item Categories
+            else if (currentItems != null)
+            {
+                string nodeText = node.Text;
+                
+                if (nodeText == LocalizationManager.Get("NodeConsumables"))
+                    AddItem(node, new ConsumableJsonItem { changes = new ChangeEntry[8] });                
+                else if (nodeText == LocalizationManager.Get("NodeScraps"))
+                    AddItem(node, new ScrapJsonItem());
+                else if (nodeText == LocalizationManager.Get("NodeBags"))
+                    AddItem(node, new BagJsonItem());
+                else if (nodeText == LocalizationManager.Get("NodeGears"))
+                    AddItem(node, new GearJsonItem());
+                else if (nodeText == LocalizationManager.Get("NodeRecipes"))
+                    AddItem(node, new RecipeJson());
+                else if (nodeText == LocalizationManager.Get("NodeShops"))
+                    AddItem(node, new ShopJsonItem());
+                else if (nodeText == LocalizationManager.Get("NodeSells"))
+                    AddItem(node, new ShopJsonItem()); 
+                else if (nodeText == LocalizationManager.Get("NodePackages"))
+                    AddItem(node, new PackageTableJsonItem());
+                else if (nodeText == LocalizationManager.Get("NodeSalvage"))
+                    AddItem(node, new SalvagePatternJson());
+                else if (nodeText == LocalizationManager.Get("NodeArchetypes"))
+                    AddItem(node, new ArchetypeJson());
+                else if (nodeText == LocalizationManager.Get("NodeReputations"))
+                    AddItem(node, new ReputationJson());
+            }
+
+            // Helper for ID and adding
+            void AddItem<T>(TreeNode parentNode, T newItem)
+            {
+                // Logic for Global ID Pool (Consumables, Scraps, Bags, Gears)
+                var globalIds = GetAllGlobalIds();
+
+                if (newItem is ConsumableJsonItem c)
+                {
+                    c.id = GetNextId(globalIds);
+                    c.customTitle = "New Consumable";
+                    c.changes = new ChangeEntry[8];
+                    for(int i=0; i<8; i++) c.changes[i] = new ChangeEntry();
+                    currentItems.consumables.Add(c);
+                }
+                else if (newItem is ScrapJsonItem s)
+                {
+                    s.id = GetNextId(globalIds);
+                    s.customTitle = "New Scrap";
+                    currentItems.scraps.Add(s);
+                }
+                else if (newItem is BagJsonItem b)
+                {
+                    b.id = GetNextId(globalIds);
+                    b.customTitle = "New Bag";
+                    currentItems.bags.Add(b);
+                }
+                else if (newItem is GearJsonItem g)
+                {
+                    g.id = GetNextId(globalIds);
+                    g.customTitle = "New Gear";
+                    currentItems.gears.Add(g);
+                }
+                else if (newItem is RecipeJson r)
+                {
+                    r.id = GetNextId(currentItems.recipes.Select(x => x.id));
+                    currentItems.recipes.Add(r);
+                }
+                else if (newItem is ShopJsonItem sh)
+                {
+                    sh.title = "New Shop";
+                    if (parentNode.Text == LocalizationManager.Get("NodeShops")) currentItems.shops.Add(sh);
+                    else currentItems.sells.Add(sh);
+                }
+                else if (newItem is PackageTableJsonItem p)
+                {
+                    p.title = "New Package";
+                    currentItems.packageTables.Add(p);
+                }
+                else if (newItem is SalvagePatternJson sp)
+                {
+                    sp.id = GetNextId(currentItems.salvagePatterns.Select(x => x.id));
+                    currentItems.salvagePatterns.Add(sp);
+                }
+                else if (newItem is ArchetypeJson a)
+                {
+                    a.key = "New_Archetype";
+                    currentItems.archetypes.Add(a);
+                }
+                else if (newItem is ReputationJson rep)
+                {
+                    rep.archetype = "Hobo_Majsner";
+                    currentItems.reputations.Add(rep);
+                }
+
+                var newNode = new TreeNode(newItem.ToString()) { Tag = newItem };
+                parentNode.Nodes.Add(newNode);
+                parentNode.Expand();
+                treeView1.SelectedNode = newNode;
+            }
+            
+            int GetNextId(IEnumerable<int> existing)
+            {
+                if (!existing.Any()) return 10000;
+                return existing.Max() + 1;
+            }
+        }
+
+        private List<int> GetAllGlobalIds()
+        {
+            var ids = new List<int>();
+            if (currentItems == null) return ids;
+
+            ids.AddRange(currentItems.consumables.Select(x => x.id));
+            ids.AddRange(currentItems.scraps.Select(x => x.id));
+            ids.AddRange(currentItems.bags.Select(x => x.id));
+            ids.AddRange(currentItems.gears.Select(x => x.id));
+            return ids;
         }
 
         private void addReactionToolStripMenuItem_Click(object sender, EventArgs e)
@@ -786,12 +1300,9 @@ namespace HoboEX_ModMaker
             var node = treeView1.SelectedNode;
             if (node?.Tag == null) return;
             
-            // Deep copy via Json
-            string json = JsonSerializer.Serialize(node.Tag);
-            if (node.Tag is DialogueActionJson) clipboardData = JsonSerializer.Deserialize<DialogueActionJson>(json);
-            else if (node.Tag is DialogueConditionJson) clipboardData = JsonSerializer.Deserialize<DialogueConditionJson>(json);
-            else if (node.Tag is DialogueOptionJson) clipboardData = JsonSerializer.Deserialize<DialogueOptionJson>(json);
-            else if (node.Tag is DialogueReactionJson) clipboardData = JsonSerializer.Deserialize<DialogueReactionJson>(json);
+            // For now, we use internal memory for high-fidelity cloning (including JsonIgnored l10n)
+            clipboardData = node.Tag;
+            toolStripStatusLabel1.Text = "Copied item to internal clipboard.";
         }
 
         private void pasteToolStripMenuItem_Click(object sender, EventArgs e)
@@ -800,10 +1311,37 @@ namespace HoboEX_ModMaker
             if (node == null || clipboardData == null) return;
 
             // Clone data for multiple pastes
+            object? clone = null;
             string json = JsonSerializer.Serialize(clipboardData);
-            object clone = null;
-            if (clipboardData is DialogueActionJson) clone = JsonSerializer.Deserialize<DialogueActionJson>(json);
-            else if (clipboardData is DialogueConditionJson) clone = JsonSerializer.Deserialize<DialogueConditionJson>(json);
+            
+            if (clipboardData is DialogueActionJson) 
+                clone = JsonSerializer.Deserialize<DialogueActionJson>(json);
+            else if (clipboardData is DialogueConditionJson) 
+                clone = JsonSerializer.Deserialize<DialogueConditionJson>(json);
+            else if (clipboardData is DialogueOptionJson opt)
+            {
+                var c = JsonSerializer.Deserialize<DialogueOptionJson>(json);
+                if (c != null)
+                {
+                    var existingIds = new HashSet<string>();
+                    GatherIds(currentRoot, existingIds);
+                    CopyL10nRecursive(opt, c);
+                    RegenerateIdsRecursive(c, node, existingIds);
+                    clone = c;
+                }
+            }
+            else if (clipboardData is DialogueReactionJson react)
+            {
+                var r = JsonSerializer.Deserialize<DialogueReactionJson>(json);
+                if (r != null)
+                {
+                    var existingIds = new HashSet<string>();
+                    GatherIds(currentRoot, existingIds);
+                    CopyL10nRecursive(react, r);
+                    RegenerateIdsRecursive(r, node, existingIds);
+                    clone = r;
+                }
+            }
 
             if (clone == null) return;
 
@@ -834,11 +1372,41 @@ namespace HoboEX_ModMaker
             else if (clone is DialogueOptionJson newOpt)
             {
                 if (node.Tag is DialogueReactionJson r) { r.options.Add(newOpt); RefreshReactionNode(node); }
-                else if (node.Tag is NpcDialogueJson n) { n.entryOptions.Add(newOpt); UpdateTree(); }
+                else if (node.Tag is NpcDialogueJson n) { n.entryOptions.Add(newOpt); AddOptionNode(node, newOpt); node.Expand(); }
             }
             else if (clone is DialogueReactionJson newReact)
             {
                 if (node.Tag is DialogueOptionJson o) { o.reactions.Add(newReact); RefreshOptionNode(node); }
+            }
+        }
+
+        private void CopyL10nRecursive(object source, object target)
+        {
+            if (source is DialogueOptionJson sOpt && target is DialogueOptionJson tOpt)
+            {
+                tOpt.l10n = new Dictionary<string, string>(sOpt.l10n);
+                for (int i = 0; i < Math.Min(sOpt.reactions.Count, tOpt.reactions.Count); i++)
+                    CopyL10nRecursive(sOpt.reactions[i], tOpt.reactions[i]);
+            }
+            else if (source is DialogueReactionJson sReact && target is DialogueReactionJson tReact)
+            {
+                tReact.l10n = new Dictionary<string, string>(sReact.l10n);
+                for (int i = 0; i < Math.Min(sReact.options.Count, tReact.options.Count); i++)
+                    CopyL10nRecursive(sReact.options[i], tReact.options[i]);
+            }
+        }
+
+        private void RegenerateIdsRecursive(object obj, TreeNode contextNode, HashSet<string> existingIds)
+        {
+            if (obj is DialogueOptionJson opt)
+            {
+                opt.id = GenerateUniqueID(contextNode, "OPT", existingIds);
+                foreach (var r in opt.reactions) RegenerateIdsRecursive(r, contextNode, existingIds);
+            }
+            else if (obj is DialogueReactionJson react)
+            {
+                react.id = GenerateUniqueID(contextNode, "REACT", existingIds);
+                foreach (var o in react.options) RegenerateIdsRecursive(o, contextNode, existingIds);
             }
         }
 
@@ -1003,7 +1571,7 @@ namespace HoboEX_ModMaker
             
             try
             {
-                Log("Starting AI Translation...");
+                Log(LocalizationManager.Get("Log_AiStart"));
                 toolStripStatusLabel1.Text = LocalizationManager.Get("AiTranslating");
                 this.Cursor = Cursors.WaitCursor;
 
@@ -1016,12 +1584,12 @@ namespace HoboEX_ModMaker
 
                 if (nodesToTranslate.Count == 0)
                 {
-                    Log("All nodes are already translated for the selected languages.");
-                    MessageBox.Show("No new text found to translate.");
+                    Log(LocalizationManager.Get("Log_AiNoNewNodes"));
+                    MessageBox.Show(LocalizationManager.Get("Log_AiNoNewNodes"));
                     return;
                 }
 
-                Log($"Gathered {nodesToTranslate.Count} nodes missing translations. Target languages scope: {string.Join(", ", targetLangs)}");
+                Log(string.Format(LocalizationManager.Get("Log_AiGathered"), nodesToTranslate.Count, string.Join(", ", targetLangs)));
 
                 // --- SPEED OPTIMIZATION: BATCHING & PARALLELISM ---
                 int batchSize = 10;
@@ -1032,19 +1600,19 @@ namespace HoboEX_ModMaker
                     batches.Add(nodesToTranslate.GetRange(i, Math.Min(batchSize, nodesToTranslate.Count - i)));
                 }
 
-                Log($"Split into {batches.Count} batches. Parallel degree: {maxParallelTasks}");
+                Log(string.Format(LocalizationManager.Get("Log_AiBatches"), batches.Count, maxParallelTasks));
 
                 var semaphore = new System.Threading.SemaphoreSlim(maxParallelTasks);
                 var tasks = batches.Select(async (batch, index) => {
                     await semaphore.WaitAsync();
                     try {
-                        Log($"[Batch {index+1}/{batches.Count}] Sending request...");
+                        Log(string.Format(LocalizationManager.Get("Log_AiBatchSend"), index + 1, batches.Count));
                         var jsonBatch = JsonSerializer.Serialize(batch);
                         var result = await DeepSeekService.TranslateAsync($"Context: {jsonBatch}");
-                        Log($"[Batch {index+1}/{batches.Count}] Received.");
+                        Log(string.Format(LocalizationManager.Get("Log_AiBatchReceive"), index + 1, batches.Count));
                         return result;
                     } catch (Exception ex) {
-                        Log($"[Batch {index+1}] Failed: {ex.Message}", true);
+                        Log(string.Format(LocalizationManager.Get("Log_AiBatchFail"), index + 1, ex.Message), true);
                         return null;
                     } finally {
                         semaphore.Release();
@@ -1054,7 +1622,7 @@ namespace HoboEX_ModMaker
                 var batchResults = await Task.WhenAll(tasks);
                 
                 // --- APPLY & CHECK FOR MISSING LANGUAGES ---
-                Log("Applying results and checking for missing languages...");
+                Log(LocalizationManager.Get("Log_AiApply"));
                 
                 foreach (var res in batchResults)
                 {
@@ -1071,7 +1639,7 @@ namespace HoboEX_ModMaker
 
                 if (missingTranslations.Any())
                 {
-                    Log($"Missing translations detected in {missingTranslations.Count} nodes. Retrying specifically for these...", true);
+                    Log(string.Format(LocalizationManager.Get("Log_AiMissingRetry"), missingTranslations.Count), true);
                     // Single batch for retry usually sufficient if not too many
                     var retryJson = JsonSerializer.Serialize(missingTranslations);
                     var retryResponse = await DeepSeekService.TranslateAsync($"COMPLETION_MODE: Translate the following missing nodes into the specified languages ONLY. Return original JSON structure. Context: {retryJson}");
@@ -1081,16 +1649,16 @@ namespace HoboEX_ModMaker
                         try {
                             using var retryDoc = JsonDocument.Parse(retryResponse);
                             ApplyTranslationsRecursive(currentRoot, retryDoc.RootElement);
-                            Log("Retry successful. Missing translations filled.");
+                            Log(LocalizationManager.Get("Log_AiRetrySuccess"));
                         } catch (Exception ex) {
-                            Log($"Retry failed to parse: {ex.Message}", true);
+                            Log(string.Format(LocalizationManager.Get("Log_AiRetryFail"), ex.Message), true);
                             Log(retryResponse);
                         }
                     }
                 }
 
                 UpdateTree();
-                Log("AI Translation process finished.");
+                Log(LocalizationManager.Get("Log_AiFinish"));
                 MessageBox.Show(LocalizationManager.Get("AiDone"));
             }
             catch (Exception ex)

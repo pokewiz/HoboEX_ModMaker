@@ -88,7 +88,7 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(new string[] { "Reputation", "Flag", "Cash", "Recipe", "Item", "BT", "Courage", "Parameter", "SK", "QuestNode" });
+            return new StandardValuesCollection(new string[] { "Reputation", "Flag", "GlobalBool", "Cash", "Recipe", "Item", "BT", "Courage", "Parameter", "SK", "QuestNode", "Angry", "Timer" });
         }
     }
 
@@ -98,7 +98,7 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(new string[] { "GiveReputation", "SetFlag", "Pay", "GiveRecipe", "GiveItem", "ItemNotif", "GiveBT", "GiveCourage", "GiveParameter", "GiveBuff", "StartQuest", "QuestDone" });
+            return new StandardValuesCollection(new string[] { "GiveReputation", "SetFlag", "SetGlobalBool", "Pay", "GiveRecipe", "GiveItem", "ItemNotif", "GiveBT", "GiveCourage", "GiveParameter", "GiveBuff", "StartQuest", "QuestDone", "QuestFail", "SetAngry", "SetTimer" });
         }
     }
 
@@ -366,6 +366,10 @@ namespace HoboEX_ModMaker.Models
 
     public class NpcDialogueJson
     {
+        [Browsable(false)]
+        [JsonIgnore]
+        public string SourceFilePath { get; set; } = "";
+
         [Category("Identification")]
         [DisplayName("NPC Archetype")]
         [TypeConverter(typeof(NpcArchetypeConverter))]
