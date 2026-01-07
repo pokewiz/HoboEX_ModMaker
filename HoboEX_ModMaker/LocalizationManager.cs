@@ -12,6 +12,7 @@ namespace HoboEX_ModMaker
         public string AiApiKey { get; set; } = "";
         public string AiModel { get; set; } = "deepseek-ai/DeepSeek-V3";
         public List<string> AiTargetLanguages { get; set; } = new List<string> { "zh", "en", "cs", "es", "ja", "fr", "ru", "pl", "de" };
+        public List<string> FavoriteColors { get; set; } = new List<string> { "#BB786B", "#FF0000", "#00FF00", "#0000FF" };
     }
 
     public static class LocalizationManager

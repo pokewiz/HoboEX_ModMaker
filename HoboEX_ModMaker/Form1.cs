@@ -15,6 +15,7 @@ namespace HoboEX_ModMaker
         private string currentFilePath = null;
         private DialogueFileRoot currentRoot = null;
         private RootJson currentItems = null;
+        private ReputationRootJson currentReputations = null;
         private object clipboardData = null;
 
         public Form1()
@@ -129,7 +130,7 @@ namespace HoboEX_ModMaker
             // Context Menu (titles updated in Opening event usually, but set defaults)
             deleteToolStripMenuItem.Text = LocalizationManager.Get("ContextDelete");
 
-            this.Text = "HoboEX Dialogue Editor";
+            this.Text = "HoboEX Mod Editor";
 
             if (currentRoot != null) UpdateTree();
         }
@@ -171,34 +172,51 @@ namespace HoboEX_ModMaker
                 treeView1.Nodes.Add(modRootNode);
 
                 // 1. Items.json Node
-                var itemsNode = new TreeNode("items.json") { Tag = currentItems, ImageKey = "file", SelectedImageKey = "file" };
-                modRootNode.Nodes.Add(itemsNode);
-
-                void AddCategory<T>(string key, IEnumerable<T> items)
+                if (currentItems != null)
                 {
-                    if (items == null || !items.Any()) return;
-                    string title = LocalizationManager.Get(key) ?? key.Replace("Node", "");
-                    var catNode = new TreeNode(title) { Tag = items, ImageKey = "folder", SelectedImageKey = "folder" };
-                    itemsNode.Nodes.Add(catNode);
-                    foreach (var item in items)
+                    var itemsNode = new TreeNode("items.json") { Tag = currentItems, ImageKey = "file", SelectedImageKey = "file" };
+                    modRootNode.Nodes.Add(itemsNode);
+
+                    void AddCategory<T>(string key, IEnumerable<T> items)
                     {
-                        catNode.Nodes.Add(new TreeNode(item.ToString()) { Tag = item });
+                        if (items == null || !items.Any()) return;
+                        string title = LocalizationManager.Get(key) ?? key.Replace("Node", "");
+                        var catNode = new TreeNode(title) { Tag = items, ImageKey = "folder", SelectedImageKey = "folder" };
+                        itemsNode.Nodes.Add(catNode);
+                        foreach (var item in items)
+                        {
+                            catNode.Nodes.Add(new TreeNode(item.ToString()) { Tag = item });
+                        }
+                    }
+
+                    AddCategory("NodeConsumables", currentItems.consumables);
+                    AddCategory("NodeScraps", currentItems.scraps);
+                    AddCategory("NodeBags", currentItems.bags);
+                    AddCategory("NodeGears", currentItems.gears);
+                    AddCategory("NodeRecipes", currentItems.recipes);
+                    AddCategory("NodeShops", currentItems.shops);
+                    AddCategory("NodeSells", currentItems.sells);
+                    AddCategory("NodePackages", currentItems.packageTables);
+                    AddCategory("NodeSalvage", currentItems.salvagePatterns);
+                    AddCategory("NodeArchetypes", currentItems.archetypes);
+                }
+
+                // 2. Reputations.json Node
+                if (currentReputations != null)
+                {
+                    string title = LocalizationManager.Get("NodeReputations") ?? "Reputations";
+                    var repFileNode = new TreeNode("reputations.json") { Tag = currentReputations, ImageKey = "file", SelectedImageKey = "file" };
+                    modRootNode.Nodes.Add(repFileNode);
+
+                    var catNode = new TreeNode(title) { Tag = currentReputations.reputations, ImageKey = "folder", SelectedImageKey = "folder" };
+                    repFileNode.Nodes.Add(catNode);
+                    foreach (var rep in currentReputations.reputations)
+                    {
+                        catNode.Nodes.Add(new TreeNode(rep.ToString()) { Tag = rep });
                     }
                 }
 
-                AddCategory("NodeConsumables", currentItems.consumables);
-                AddCategory("NodeScraps", currentItems.scraps);
-                AddCategory("NodeBags", currentItems.bags);
-                AddCategory("NodeGears", currentItems.gears);
-                AddCategory("NodeRecipes", currentItems.recipes);
-                AddCategory("NodeShops", currentItems.shops);
-                AddCategory("NodeSells", currentItems.sells);
-                AddCategory("NodePackages", currentItems.packageTables);
-                AddCategory("NodeSalvage", currentItems.salvagePatterns);
-                AddCategory("NodeArchetypes", currentItems.archetypes);
-                AddCategory("NodeReputations", currentItems.reputations);
-
-                // 2. Options Folder Node
+                // 3. Options Folder Node
                 string optionsName = Path.GetFileName(optionsPath);
                 var optionsNode = new TreeNode(optionsName) { Tag = currentRoot, ImageKey = "folder", SelectedImageKey = "folder" };
                 modRootNode.Nodes.Add(optionsNode);
@@ -330,6 +348,15 @@ namespace HoboEX_ModMaker
                     actsNode.Nodes.Add(new TreeNode(act.ToString()) { Tag = act });
             }
 
+            // Conditions Group
+            if (react.conditions.Count > 0)
+            {
+                var condsNode = new TreeNode(LocalizationManager.Get("NodeConditions")) { ImageKey = "folder", SelectedImageKey = "folder" };
+                node.Nodes.Add(condsNode);
+                foreach (var cond in react.conditions)
+                    condsNode.Nodes.Add(new TreeNode(cond.ToString()) { Tag = cond });
+            }
+
             // L10n Group
             if (react.l10n.Count > 0)
             {
@@ -347,6 +374,17 @@ namespace HoboEX_ModMaker
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
             propertyGrid1.SelectedObject = e.Node.Tag;
+
+            // Auto expand collection arrays (changes and parameterChanges)
+            if (e.Node.Tag != null)
+            {
+                var tagType = e.Node.Tag.GetType();
+                if (tagType == typeof(ConsumableJsonItem) || tagType == typeof(GearJsonItem) || tagType == typeof(RecipeJson))
+                {
+                    // Expand all categories and specific arrays
+                    propertyGrid1.ExpandAllGridItems();
+                }
+            }
         }
 
         private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
@@ -519,7 +557,7 @@ namespace HoboEX_ModMaker
                 }
 
                 
-                // Try to load items.json from parent directory
+                // Try to load items.json and reputations.json from parent directory
                 try
                 {
                     string parentDir = Directory.GetParent(folderPath)?.FullName;
@@ -531,16 +569,22 @@ namespace HoboEX_ModMaker
                             string json = File.ReadAllText(itemsPath);
                             currentItems = JsonSerializer.Deserialize<RootJson>(json);
                         }
-                        else
+                        else currentItems = null;
+
+                        string repsPath = Path.Combine(parentDir, "reputations.json");
+                        if (File.Exists(repsPath))
                         {
-                            currentItems = null;
+                            string json = File.ReadAllText(repsPath);
+                            currentReputations = JsonSerializer.Deserialize<ReputationRootJson>(json);
                         }
+                        else currentReputations = null;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log($"Failed to load items.json: {ex.Message}", true);
+                    Log($"Failed to load items/reputations: {ex.Message}", true);
                     currentItems = null;
+                    currentReputations = null;
                 }
 
                 UpdateTree();
@@ -616,9 +660,39 @@ namespace HoboEX_ModMaker
                         savedCount++;
                     }
 
+                    // Save items.json if currentItems is active
+                    var saveOptions = new JsonSerializerOptions { 
+                        WriteIndented = true, 
+                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                    };
+
+                    if (currentItems != null)
+                    {
+                        string parentDir = Directory.GetParent(path)?.FullName;
+                        if (!string.IsNullOrEmpty(parentDir))
+                        {
+                            string itemsPath = Path.Combine(parentDir, "items.json");
+                            File.WriteAllText(itemsPath, JsonSerializer.Serialize(currentItems, saveOptions));
+                            Log($"Saved items.json to {itemsPath}");
+                        }
+                    }
+
+                    // Save reputations.json if currentReputations is active
+                    if (currentReputations != null)
+                    {
+                        string parentDir = Directory.GetParent(path)?.FullName;
+                        if (!string.IsNullOrEmpty(parentDir))
+                        {
+                            string repsPath = Path.Combine(parentDir, "reputations.json");
+                            File.WriteAllText(repsPath, JsonSerializer.Serialize(currentReputations, saveOptions));
+                            Log($"Saved reputations.json to {repsPath}");
+                        }
+                    }
+
                     if (savedCount > 0)
                     {
-                        toolStripStatusLabel1.Text = $"Saved {savedCount} files in mod folder.";
+                        toolStripStatusLabel1.Text = string.Format(LocalizationManager.Get("Msg_ModSavedWithItems"), savedCount);
                     }
                     else
                     {
@@ -760,7 +834,8 @@ namespace HoboEX_ModMaker
             bool isReputations = node.Text == LocalizationManager.Get("NodeReputations");
 
             object parentTag = node.Tag;
-            bool canAddItem = (isConsumables || isScraps || isBags || isGears || isRecipes || isShops || isSells || isPackages || isSalvage || isArchetypes || isReputations) && currentItems != null;
+            bool canAddItem = (isConsumables || isScraps || isBags || isGears || isRecipes || isShops || isSells || isPackages || isSalvage || isArchetypes) && currentItems != null;
+            canAddItem |= isReputations && currentReputations != null;
 
             // 1. Logic States
             bool isModFolder = IsModFolderMode();
@@ -769,7 +844,7 @@ namespace HoboEX_ModMaker
             bool canAddOption = (tag is DialogueFileRoot && !isModFolder) || isFileNode || tag is NpcDialogueJson || tag is DialogueReactionJson;
             bool canAddReaction = tag is DialogueOptionJson;
             bool canAddAction = tag is DialogueOptionJson || tag is DialogueReactionJson || isActionsNode;
-            bool canAddCondition = tag is DialogueOptionJson || isConditionsNode;
+            bool canAddCondition = tag is DialogueOptionJson || tag is DialogueReactionJson || isConditionsNode;
             bool canAddL10n = tag is DialogueOptionJson || tag is DialogueReactionJson || isL10nNode;
 
             bool isDataNode = tag is DialogueActionJson || tag is DialogueConditionJson || tag is DialogueOptionJson || tag is DialogueReactionJson;
@@ -780,7 +855,7 @@ namespace HoboEX_ModMaker
             if (clipboardData != null)
             {
                 if (clipboardData is DialogueActionJson && (tag is DialogueOptionJson || tag is DialogueReactionJson || isActionsNode)) canPaste = true;
-                else if (clipboardData is DialogueConditionJson && (tag is DialogueOptionJson || isConditionsNode)) canPaste = true;
+                else if (clipboardData is DialogueConditionJson && (tag is DialogueOptionJson || tag is DialogueReactionJson || isConditionsNode)) canPaste = true;
                 else if (clipboardData is DialogueOptionJson && (tag is DialogueReactionJson || tag is NpcDialogueJson)) canPaste = true;
                 else if (clipboardData is DialogueReactionJson && tag is DialogueOptionJson) canPaste = true;
             }
@@ -991,31 +1066,31 @@ namespace HoboEX_ModMaker
                 node.Expand();
             }
             // Handle Item Categories
-            else if (currentItems != null)
+            else if (currentItems != null || currentReputations != null)
             {
                 string nodeText = node.Text;
                 
-                if (nodeText == LocalizationManager.Get("NodeConsumables"))
+                if (nodeText == LocalizationManager.Get("NodeConsumables") && currentItems != null)
                     AddItem(node, new ConsumableJsonItem { changes = new ChangeEntry[8] });                
-                else if (nodeText == LocalizationManager.Get("NodeScraps"))
+                else if (nodeText == LocalizationManager.Get("NodeScraps") && currentItems != null)
                     AddItem(node, new ScrapJsonItem());
-                else if (nodeText == LocalizationManager.Get("NodeBags"))
+                else if (nodeText == LocalizationManager.Get("NodeBags") && currentItems != null)
                     AddItem(node, new BagJsonItem());
-                else if (nodeText == LocalizationManager.Get("NodeGears"))
+                else if (nodeText == LocalizationManager.Get("NodeGears") && currentItems != null)
                     AddItem(node, new GearJsonItem());
-                else if (nodeText == LocalizationManager.Get("NodeRecipes"))
+                else if (nodeText == LocalizationManager.Get("NodeRecipes") && currentItems != null)
                     AddItem(node, new RecipeJson());
-                else if (nodeText == LocalizationManager.Get("NodeShops"))
+                else if (nodeText == LocalizationManager.Get("NodeShops") && currentItems != null)
                     AddItem(node, new ShopJsonItem());
-                else if (nodeText == LocalizationManager.Get("NodeSells"))
+                else if (nodeText == LocalizationManager.Get("NodeSells") && currentItems != null)
                     AddItem(node, new ShopJsonItem()); 
-                else if (nodeText == LocalizationManager.Get("NodePackages"))
+                else if (nodeText == LocalizationManager.Get("NodePackages") && currentItems != null)
                     AddItem(node, new PackageTableJsonItem());
-                else if (nodeText == LocalizationManager.Get("NodeSalvage"))
+                else if (nodeText == LocalizationManager.Get("NodeSalvage") && currentItems != null)
                     AddItem(node, new SalvagePatternJson());
-                else if (nodeText == LocalizationManager.Get("NodeArchetypes"))
+                else if (nodeText == LocalizationManager.Get("NodeArchetypes") && currentItems != null)
                     AddItem(node, new ArchetypeJson());
-                else if (nodeText == LocalizationManager.Get("NodeReputations"))
+                else if (nodeText == LocalizationManager.Get("NodeReputations") && currentReputations != null)
                     AddItem(node, new ReputationJson());
             }
 
@@ -1049,6 +1124,8 @@ namespace HoboEX_ModMaker
                 {
                     g.id = GetNextId(globalIds);
                     g.customTitle = "New Gear";
+                    g.parameterChanges = new ParameterChangeJson[3];
+                    for (int i = 0; i < 3; i++) g.parameterChanges[i] = new ParameterChangeJson();
                     currentItems.gears.Add(g);
                 }
                 else if (newItem is RecipeJson r)
@@ -1080,7 +1157,7 @@ namespace HoboEX_ModMaker
                 else if (newItem is ReputationJson rep)
                 {
                     rep.archetype = "Hobo_Majsner";
-                    currentItems.reputations.Add(rep);
+                    currentReputations.reputations.Add(rep);
                 }
 
                 var newNode = new TreeNode(newItem.ToString()) { Tag = newItem };
@@ -1154,11 +1231,17 @@ namespace HoboEX_ModMaker
             {
                 var parentTag = node.Parent.Tag;
                 if (parentTag is DialogueOptionJson opt) { opt.conditions.Add(cond); RefreshOptionNode(node.Parent); }
+                else if (parentTag is DialogueReactionJson react) { react.conditions.Add(cond); RefreshReactionNode(node.Parent); }
             }
             else if (node.Tag is DialogueOptionJson opt)
             {
                 opt.conditions.Add(cond);
                 RefreshOptionNode(node);
+            }
+            else if (node.Tag is DialogueReactionJson react)
+            {
+                react.conditions.Add(cond);
+                RefreshReactionNode(node);
             }
             node.Expand();
         }
@@ -1268,6 +1351,7 @@ namespace HoboEX_ModMaker
             else if (tag is DialogueConditionJson cond)
             {
                 if (parentTag is DialogueOptionJson parentOpt) parentOpt.conditions.Remove(cond);
+                else if (parentTag is DialogueReactionJson parentReact) parentReact.conditions.Remove(cond);
             }
 
             // After deleting an item, refresh the container's real parent to handle auto-disappear of empty folder
@@ -1446,7 +1530,7 @@ namespace HoboEX_ModMaker
             else if (draggedTag is DialogueConditionJson cond)
             {
                 if (isTargetConditions) { MoveCondition(draggedNode, targetNode.Parent); allowed = true; }
-                else if (targetTag is DialogueOptionJson) { MoveCondition(draggedNode, targetNode); allowed = true; }
+                else if (targetTag is DialogueOptionJson || targetTag is DialogueReactionJson) { MoveCondition(draggedNode, targetNode); allowed = true; }
             }
             // 2. Option Rules: To Reaction or Root (NpcDialogue)
             else if (draggedTag is DialogueOptionJson opt)
@@ -1480,8 +1564,10 @@ namespace HoboEX_ModMaker
             var cond = (DialogueConditionJson)itemNode.Tag;
             var oldParent = itemNode.Parent.Tag == null ? itemNode.Parent.Parent.Tag : itemNode.Parent.Tag;
             if (oldParent is DialogueOptionJson o) o.conditions.Remove(cond);
+            else if (oldParent is DialogueReactionJson r) r.conditions.Remove(cond);
 
             if (targetParentNode.Tag is DialogueOptionJson to) to.conditions.Add(cond);
+            else if (targetParentNode.Tag is DialogueReactionJson tr) tr.conditions.Add(cond);
         }
 
         private void MoveOption(TreeNode itemNode, TreeNode targetParentNode)

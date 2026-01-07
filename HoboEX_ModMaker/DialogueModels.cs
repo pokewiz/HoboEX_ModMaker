@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing.Design;
@@ -69,6 +70,96 @@ namespace HoboEX_ModMaker.Models
 
             editorService.DropDownControl(panel);
             return lb.SelectedItem ?? value;
+        }
+    }
+
+    public class HexColorEditor : UITypeEditor
+    {
+        private static readonly ColorDialog _colorDialog = new ColorDialog { FullOpen = true };
+
+        public override UITypeEditorEditStyle GetEditStyle(ITypeDescriptorContext context) => UITypeEditorEditStyle.DropDown;
+
+        public override object EditValue(ITypeDescriptorContext context, IServiceProvider provider, object value)
+        {
+            var editorService = (IWindowsFormsEditorService)provider.GetService(typeof(IWindowsFormsEditorService));
+            if (editorService == null) return value;
+
+            var lb = new ListBox { BorderStyle = BorderStyle.None, Dock = DockStyle.Fill, DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 22 };
+            
+            // Populate items: Favorites + "More..."
+            var favorites = LocalizationManager.Settings.FavoriteColors ?? new List<string>();
+            foreach (var col in favorites) lb.Items.Add(col);
+            lb.Items.Add(LocalizationManager.Get("ContextAddItem") + "..."); // Translation for "More..."
+
+            // OwnerDraw for color swatches
+            lb.DrawItem += (s, e) =>
+            {
+                e.DrawBackground();
+                if (e.Index < 0) return;
+
+                string itemText = lb.Items[e.Index].ToString();
+                Rectangle swatchRect = new Rectangle(e.Bounds.Left + 2, e.Bounds.Top + 2, 18, e.Bounds.Height - 4);
+                
+                if (e.Index < favorites.Count)
+                {
+                    try
+                    {
+                        using (var brush = new SolidBrush(ColorTranslator.FromHtml(itemText)))
+                            e.Graphics.FillRectangle(brush, swatchRect);
+                        e.Graphics.DrawRectangle(Pens.Gray, swatchRect);
+                    }
+                    catch { }
+                }
+                else
+                {
+                    // Icon for "More..."
+                    e.Graphics.DrawRectangle(Pens.Gray, swatchRect);
+                    e.Graphics.DrawLine(Pens.Black, swatchRect.Left + 4, swatchRect.Top + 9, swatchRect.Right - 4, swatchRect.Top + 9);
+                    e.Graphics.DrawLine(Pens.Black, swatchRect.Left + 9, swatchRect.Top + 4, swatchRect.Left + 9, swatchRect.Bottom - 4);
+                }
+
+                TextRenderer.DrawText(e.Graphics, itemText, lb.Font, new Point(swatchRect.Right + 5, e.Bounds.Top + 2), e.ForeColor);
+                e.DrawFocusRectangle();
+            };
+
+            lb.Click += (s, e) =>
+            {
+                if (lb.SelectedIndex < 0) return;
+
+                if (lb.SelectedIndex < favorites.Count)
+                {
+                    value = lb.SelectedItem.ToString();
+                    editorService.CloseDropDown();
+                }
+                else
+                {
+                    // Open Native Dialog
+                    string currentHex = value as string;
+                    if (!string.IsNullOrEmpty(currentHex))
+                    {
+                        try { _colorDialog.Color = ColorTranslator.FromHtml(currentHex.StartsWith("#") ? currentHex : "#" + currentHex); } catch { }
+                    }
+
+                    if (_colorDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        string newHex = "#" + (_colorDialog.Color.ToArgb() & 0x00FFFFFF).ToString("X6");
+                        
+                        // Update Favorites: move to top, remove duplicates, limit to 16
+                        favorites.Remove(newHex);
+                        favorites.Insert(0, newHex);
+                        if (favorites.Count > 16) favorites.RemoveAt(16);
+                        
+                        LocalizationManager.Settings.FavoriteColors = favorites;
+                        LocalizationManager.SaveSettings();
+                        
+                        value = newHex;
+                        editorService.CloseDropDown();
+                    }
+                }
+            };
+
+            editorService.DropDownControl(lb);
+            return value;
         }
     }
 
@@ -306,6 +397,7 @@ namespace HoboEX_ModMaker.Models
         
         [Category("Display")]
         [DisplayName("Color")]
+        [Editor(typeof(HexColorEditor), typeof(UITypeEditor))]
         public string color { get; set; } = "";
 
         [Category("Service")]
@@ -357,6 +449,9 @@ namespace HoboEX_ModMaker.Models
 
         [Browsable(false)]
         public List<DialogueActionJson> actions { get; set; } = new List<DialogueActionJson>();
+        
+        [Browsable(false)]
+        public List<DialogueConditionJson> conditions { get; set; } = new List<DialogueConditionJson>();
         
         [Browsable(false)]
         public List<DialogueOptionJson> options { get; set; } = new List<DialogueOptionJson>();

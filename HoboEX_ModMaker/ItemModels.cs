@@ -39,16 +39,181 @@ namespace HoboEX_ModMaker.Models
         public List<GearJsonItem> gears { get; set; } = new List<GearJsonItem>();
         public List<SalvagePatternJson> salvagePatterns { get; set; } = new List<SalvagePatternJson>();
         public List<ArchetypeJson> archetypes { get; set; } = new List<ArchetypeJson>();
-        public List<ReputationJson> reputations { get; set; } = new List<ReputationJson>();
+    }
+
+    public enum ESoundType
+    {
+        General,
+        ScrapGeneral,
+        ScrapMetal,
+        ScrapWood,
+        ScrapSoft,
+        ScrapGlass,
+        Coin,
+        Bag,
+        DrinkGlass,
+        DrinkGeneral,
+        Cigarette,
+        ConsumGeneral,
+        ConsumFood,
+        CondumFoodFresh,
+        Scratch,
+        Gear,
+        GearZip,
+        DrinkBubble
+    }
+
+    public enum ETypeAddiction
+    {
+        NOTHING,
+        Alcohol,
+        Drugs,
+        Cigarettes
+    }
+
+    public enum EParameterType
+    {
+        NOTHING,
+        HealingBuff,
+        FaithBuff,
+        ConfidenceBuff,
+        CureBuff,
+        DeodorBuff,
+        WarmingBuff,
+        RagingBuff,
+        Health,
+        Food,
+        Morale,
+        Freshness,
+        Warm,
+        Wet,
+        Illness,
+        Toxicity,
+        Inebriety,
+        Greatneed,
+        Smell,
+        Capacity,
+        Stamina,
+        SmellResistance,
+        WetResistance,
+        WarmResistance,
+        ToxicityResistance,
+        Immunity,
+        Attack,
+        Defense,
+        Charism,
+        Courage,
+        CourageMax,
+        Grit,
+        GritMax
+    }
+
+    public enum ETypeChanges
+    {
+        NOTHING,
+        Buff,
+        Primary,
+        Secondary,
+        Normal
+    }
+
+    public enum ERecipeType
+    {
+        Structure,
+        Cook,
+        Item,
+        Improvisation,
+        Weapon,
+        ForRepair,
+        ForUpgrade
+    }
+
+    public enum EBenchType
+    {
+        Nothing,
+        Normal,
+        Kitchen,
+        DrugLab
+    }
+
+    public enum ESkillKey
+    {
+        DrunkerSK,
+        DumpRiderSK,
+        TacticOrdinarySK,
+        InsolenceSK,
+        TrollSK,
+        MuggerSK,
+        StreetSellerSK,
+        ResistanceSK,
+        DirtyThiefSK,
+        DirtyThief2SK,
+        CharmingSK,
+        Charming2SK,
+        Charming3SK,
+        KurazSK,
+        BulglarSK,
+        MechatronikSK,
+        IntuiceSK,
+        AdrenalinSK,
+        MistrMeceSK,
+        MasochistaSK,
+        FighterSK,
+        WeaponsmithSK,
+        PaserakSK,
+        Paserak2SK,
+        NotorikSK,
+        Notorik2SK,
+        Notorik3SK,
+        FetakSK,
+        Fetak2SK,
+        NOTHING
+    }
+
+    public enum EGearParameterType
+    {
+        Health,
+        Food,
+        Morale,
+        Freshness,
+        Warm,
+        Wet,
+        Illness,
+        Toxicity,
+        Alcohol,
+        Greatneed,
+        Smell,
+        SmellResistance,
+        WetResistance,
+        WarmResistance,
+        ToxicityResistance,
+        Immunity,
+        Attack,
+        Defense,
+        Charism,
+        Capacity,
+        Stamina,
+        GearSmell,
+        Grit,
+        GritMax,
+        Courage,
+        CourageMax
     }
 
     // ==================== 信任度初始化 ====================
+    public class ReputationRootJson
+    {
+        public List<ReputationJson> reputations { get; set; } = new List<ReputationJson>();
+    }
+
     public class ReputationJson
     {
         [Category("CategoryBasic"), DisplayName("Prop_NPC_NpcArchetype")]
-        public string archetype { get; set; } // NPC 标识符，如 "Hobo_Furgrim"
-        
-        [Category("CategoryBasic"), DisplayName("Prop_Reputation_Initial")]
+        [TypeConverter(typeof(NpcArchetypeConverter))]
+        [Editor(typeof(SearchableStringEditor), typeof(UITypeEditor))]
+        public string archetype { get; set; } // NPC identifier
+
+        [Category("CategoryBasic"), DisplayName("Prop_Reputation_InitialValue")]
         public int initialValue { get; set; } = 0;
 
         public override string ToString() => $"Reputation: {archetype} ({initialValue})";
@@ -76,7 +241,7 @@ namespace HoboEX_ModMaker.Models
         public float? weight { get; set; }
 
         [Category("CategoryBehavior"), DisplayName("Prop_Item_TypeAddiction")]
-        public int? typeAddiction { get; set; }
+        public ETypeAddiction? typeAddiction { get; set; }
 
         [Category("CategoryBasic"), DisplayName("Prop_Item_Index")]
         public int? index { get; set; }
@@ -91,16 +256,16 @@ namespace HoboEX_ModMaker.Models
         public bool? sellable { get; set; }
 
         [Category("CategoryDisplay"), DisplayName("Prop_Item_SoundType")]
-        public int? soundType { get; set; }
+        public ESoundType? soundType { get; set; }
 
         [Category("CategoryBehavior"), DisplayName("Prop_Item_NotForFire")]
         public bool? notForFire { get; set; }
 
         [Category("CategoryBehavior"), DisplayName("Prop_Item_ReferenceItemId")]
-        public int referenceItemId { get; set; }
+        public int? referenceItemId { get; set; }
 
         [Category("CategoryBehavior"), DisplayName("Prop_Item_PackageTable")]
-        public string packageTable { get; set; } = "";
+        public string? packageTable { get; set; }
 
         [Category("CategoryBehavior"), DisplayName("Prop_Item_BuffetGame")]
         public bool? buffetGame { get; set; }
@@ -144,10 +309,10 @@ namespace HoboEX_ModMaker.Models
     public class ChangeEntry
     {
         [Category("CategoryBehavior"), DisplayName("Prop_Change_Influence")]
-        public int influence { get; set; } = 0;
+        public EParameterType influence { get; set; } = EParameterType.NOTHING;
         
         [Category("CategoryBehavior"), DisplayName("Prop_Change_TypeChange")]
-        public int typeChange { get; set; } = 0;
+        public ETypeChanges typeChange { get; set; } = ETypeChanges.NOTHING;
         
         [Category("CategoryBehavior"), DisplayName("Prop_Change_NormalValue")]
         public int normalValue { get; set; } = 0;
@@ -180,11 +345,11 @@ namespace HoboEX_ModMaker.Models
         [Category("CategoryBasic"), DisplayName("Prop_Item_Sellable")]
         public bool? sellable { get; set; }
         [Category("CategoryDisplay"), DisplayName("Prop_Item_SoundType")]
-        public int? soundType { get; set; }
+        public ESoundType? soundType { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_NotForFire")]
         public bool? notForFire { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_ReferenceItemId")]
-        public int referenceItemId { get; set; }
+        public int? referenceItemId { get; set; }
         [Category("CategoryBasic"), DisplayName("Prop_Item_Firerate")]
         public int? firerate { get; set; }
         [Category("CategoryBasic"), DisplayName("Prop_Item_IsModify")]
@@ -226,11 +391,11 @@ namespace HoboEX_ModMaker.Models
         [Category("CategoryDisplay"), DisplayName("Prop_Item_RareColor")]
         public int? rareColor { get; set; }
         [Category("CategoryDisplay"), DisplayName("Prop_Item_SoundType")]
-        public int? soundType { get; set; }
+        public ESoundType? soundType { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_NotForFire")]
         public bool? notForFire { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_ReferenceItemId")]
-        public int referenceItemId { get; set; }
+        public int? referenceItemId { get; set; }
         [Category("CategoryBasic"), DisplayName("Prop_Item_Capacity")]
         public int? capacity { get; set; }
         [Category("CategoryBasic"), DisplayName("Prop_Item_Firerate")]
@@ -273,7 +438,7 @@ namespace HoboEX_ModMaker.Models
         [Category("CategoryDisplay"), DisplayName("Prop_Item_RareColor")]
         public int? rareColor { get; set; }
         [Category("CategoryDisplay"), DisplayName("Prop_Item_SoundType")]
-        public int? soundType { get; set; }
+        public ESoundType? soundType { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_NotForFire")]
         public bool? notForFire { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_Category")]
@@ -290,12 +455,13 @@ namespace HoboEX_ModMaker.Models
         public int? repairCash { get; set; }
         
         [Category("CategoryBehavior"), DisplayName("Prop_Item_ParameterChanges")]
+        [Description("Fixed size array of 3 changes. You cannot add or remove items.")]
+        [Editor(typeof(FixedSizeArrayEditor), typeof(UITypeEditor))]
         public ParameterChangeJson[] parameterChanges { get; set; }
         [Category("CategoryBasic"), DisplayName("Prop_Item_IsModify")]
         public bool isModify { get; set; } = false;
         [Category("CategoryBehavior"), DisplayName("Prop_Item_ReferenceItemId")]
-        public int referenceItemId { get; set; }
-
+        public int? referenceItemId { get; set; }
         [Browsable(false)] public int? titleKey { get; set; }
         [Browsable(false)] public int? descriptionKey { get; set; }
         [Browsable(false)] public int[] improRecipes { get; set; }
@@ -313,9 +479,11 @@ namespace HoboEX_ModMaker.Models
     public class ParameterChangeJson
     {
         [Category("CategoryBehavior"), DisplayName("Prop_Param_Type")]
-        public int influencedParameterType { get; set; }
+        public EGearParameterType influencedParameterType { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Common_Value")]
         public int value { get; set; }
+
+        public override string ToString() => $"Param: {influencedParameterType} ({value})";
     }
 
     // ==================== 商店补丁 ====================
@@ -370,7 +538,7 @@ namespace HoboEX_ModMaker.Models
         [Category("CategoryIdentification"), DisplayName("Prop_Common_ID")]
         public int id { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Common_Type")]
-        public int type { get; set; }
+        public ERecipeType type { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_NotActive")]
         public bool notActive { get; set; }
         [Category("CategoryBasic"), DisplayName("Prop_Item_Index")]
@@ -378,13 +546,13 @@ namespace HoboEX_ModMaker.Models
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_RequireSkillLvl")]
         public int requireSkillLvl { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_RequireSK")]
-        public int requireSK { get; set; }
+        public ESkillKey requireSK { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_ResultItemId")]
         public int resultItemId { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_MyBench")]
-        public int myBench { get; set; }
+        public EBenchType myBench { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_MyAsociatedBench")]
-        public int myAsociatedBench { get; set; }
+        public EBenchType myAsociatedBench { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_CraftingDifficulty")]
         public int craftingDifficulty { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Recipe_RequireItemsPrimary")]
@@ -403,6 +571,8 @@ namespace HoboEX_ModMaker.Models
         public int itemID { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Shop_CountItems")]
         public int itemCount { get; set; }
+
+        public override string ToString() => $"Item {itemID} (x{itemCount})";
     }
 
     // ==================== 拆解模式 ====================
