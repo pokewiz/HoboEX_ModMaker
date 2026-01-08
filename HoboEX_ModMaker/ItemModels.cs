@@ -41,6 +41,20 @@ namespace HoboEX_ModMaker.Models
         public List<ArchetypeJson> archetypes { get; set; } = new List<ArchetypeJson>();
     }
 
+    public class ModInfo
+    {
+        [Category("CategoryDisplay"), DisplayName("Prop_Mod_Name")]
+        public string name { get; set; } = "New Mod";
+
+        [Category("CategoryDisplay"), DisplayName("Prop_Mod_Author")]
+        public string author { get; set; } = "";
+
+        [Category("CategoryDisplay"), DisplayName("Prop_Mod_Version")]
+        public string version { get; set; } = "1.0.0";
+
+        public override string ToString() => name ?? "New Mod";
+    }
+
     public enum ESoundType
     {
         General,
@@ -198,6 +212,14 @@ namespace HoboEX_ModMaker.Models
         GritMax,
         Courage,
         CourageMax
+    }
+
+    public enum EGearCategory
+    {
+        Hat,
+        Jacket,
+        Trousers,
+        Shoes
     }
 
     // ==================== 信任度初始化 ====================
@@ -442,7 +464,7 @@ namespace HoboEX_ModMaker.Models
         [Category("CategoryBehavior"), DisplayName("Prop_Item_NotForFire")]
         public bool? notForFire { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_Category")]
-        public int? category { get; set; }
+        public EGearCategory? category { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_DurabilityResistance")]
         public int? durabilityResistance { get; set; }
         [Category("CategoryBehavior"), DisplayName("Prop_Item_WarmResistance")]

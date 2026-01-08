@@ -16,7 +16,12 @@ namespace HoboEX_ModMaker
         private DialogueFileRoot currentRoot = null;
         private RootJson currentItems = null;
         private ReputationRootJson currentReputations = null;
+        private ModInfo currentModInfo = null;
         private object clipboardData = null;
+
+        private ToolStripMenuItem addItemsJsonToolStripMenuItem;
+        private ToolStripMenuItem addReputationsJsonToolStripMenuItem;
+        private ToolStripMenuItem addOptionsDirToolStripMenuItem;
 
         public Form1()
         {
@@ -43,6 +48,21 @@ namespace HoboEX_ModMaker
             LocalizedTypeDescriptorProvider.Register(typeof(SalvagePatternJson));
             LocalizedTypeDescriptorProvider.Register(typeof(ArchetypeJson));
             LocalizedTypeDescriptorProvider.Register(typeof(ReputationJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(ModInfo));
+
+            // Initialize extra menu items
+            addItemsJsonToolStripMenuItem = new ToolStripMenuItem();
+            addItemsJsonToolStripMenuItem.Click += (s, e) => { currentItems = new RootJson(); UpdateTree(); };
+            
+            addReputationsJsonToolStripMenuItem = new ToolStripMenuItem();
+            addReputationsJsonToolStripMenuItem.Click += (s, e) => { currentReputations = new ReputationRootJson(); UpdateTree(); };
+            
+            addOptionsDirToolStripMenuItem = new ToolStripMenuItem();
+            addOptionsDirToolStripMenuItem.Click += (s, e) => { currentRoot = new DialogueFileRoot(); UpdateTree(); };
+
+            contextMenuStrip1.Items.Insert(0, addItemsJsonToolStripMenuItem);
+            contextMenuStrip1.Items.Insert(1, addReputationsJsonToolStripMenuItem);
+            contextMenuStrip1.Items.Insert(2, addOptionsDirToolStripMenuItem);
 
             // Resize PropertyGrid Description Area
             foreach (Control c in propertyGrid1.Controls)
@@ -59,16 +79,11 @@ namespace HoboEX_ModMaker
             this.StartPosition = FormStartPosition.CenterScreen;
             ApplyLocalization();
 
-            // Initial default for startup
-            currentRoot = new DialogueFileRoot();
-            currentRoot.dialogues.Add(new NpcDialogueJson { npcArchetype = "Hobo_Majsner" });
             
             treeView1.AllowDrop = true;
             treeView1.ItemDrag += treeView1_ItemDrag;
             treeView1.DragEnter += treeView1_DragEnter;
             treeView1.DragDrop += treeView1_DragDrop;
-
-            UpdateTree();
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -113,7 +128,6 @@ namespace HoboEX_ModMaker
             // Menu
             fileToolStripMenuItem.Text = LocalizationManager.Get("MenuFile");
             newToolStripMenuItem.Text = LocalizationManager.Get("MenuNew");
-            openToolStripMenuItem.Text = LocalizationManager.Get("MenuOpen");
             saveToolStripMenuItem.Text = LocalizationManager.Get("MenuSave");
             saveAsToolStripMenuItem.Text = LocalizationManager.Get("MenuSaveAs");
             languageToolStripMenuItem.Text = LocalizationManager.Get("MenuLanguage");
@@ -135,19 +149,14 @@ namespace HoboEX_ModMaker
             if (currentRoot != null) UpdateTree();
         }
 
-        private void NewFile()
+        private void NewMod()
         {
-            using (var selector = new NpcSelectorForm(DialogueModels.NPC_ARCHETYPES))
-            {
-                if (selector.ShowDialog() == DialogResult.OK)
-                {
-                    currentRoot = new DialogueFileRoot();
-                    currentRoot.dialogues.Add(new NpcDialogueJson { npcArchetype = selector.SelectedArchetype });
-                    currentFilePath = null;
-                    UpdateTree();
-                    toolStripStatusLabel1.Text = LocalizationManager.Get("NewFileCreated");
-                }
-            }
+            currentFilePath = null;
+            currentRoot = null; 
+            currentItems = null;
+            currentReputations = null;
+            currentModInfo = new ModInfo { name = "New Mod" };
+            UpdateTree();
         }
 
         private bool IsModFolderMode()
@@ -161,14 +170,24 @@ namespace HoboEX_ModMaker
             treeView1.Nodes.Clear();
             
             bool isModFolder = IsModFolderMode();
-                    if (isModFolder && currentItems != null)
+            if (currentModInfo == null && currentRoot == null)
+            {
+                treeView1.EndUpdate();
+                return;
+            }
+
+            if (currentModInfo != null)
             {
                 // Root is the Mod Folder (Parent of options)
-                string optionsPath = currentFilePath;
-                string modPath = Directory.GetParent(optionsPath)?.FullName ?? optionsPath;
-                string modName = Path.GetFileName(modPath);
+                string modName = currentModInfo.name;
+                if (string.IsNullOrEmpty(modName))
+                {
+                    string optionsPath = currentFilePath;
+                    string modPath = (!string.IsNullOrEmpty(optionsPath) && Directory.Exists(optionsPath)) ? (Directory.GetParent(optionsPath)?.FullName ?? optionsPath) : "";
+                    modName = !string.IsNullOrEmpty(modPath) ? Path.GetFileName(modPath) : "New Mod";
+                }
 
-                var modRootNode = new TreeNode(modName) { Tag = null }; // Mod Root
+                var modRootNode = new TreeNode(modName) { Tag = currentModInfo, ImageKey = "folder", SelectedImageKey = "folder" }; 
                 treeView1.Nodes.Add(modRootNode);
 
                 // 1. Items.json Node
@@ -217,18 +236,21 @@ namespace HoboEX_ModMaker
                 }
 
                 // 3. Options Folder Node
-                string optionsName = Path.GetFileName(optionsPath);
-                var optionsNode = new TreeNode(optionsName) { Tag = currentRoot, ImageKey = "folder", SelectedImageKey = "folder" };
-                modRootNode.Nodes.Add(optionsNode);
+                if (currentRoot != null)
+                {
+                    string optionsName = "options";
+                    var optionsNode = new TreeNode(optionsName) { Tag = currentRoot, ImageKey = "folder", SelectedImageKey = "folder" };
+                    modRootNode.Nodes.Add(optionsNode);
 
-                // Fill Options Content
-                AddOptionsContent(optionsNode);
+                    // Fill Options Content
+                    AddOptionsContent(optionsNode);
+                }
                 
                 modRootNode.Expand();
             }
             else
             {
-                // Normal/Empty Root
+                // Old-style or empty Dialogue Root
                 string rootText = string.IsNullOrEmpty(currentFilePath) 
                     ? LocalizationManager.Get("RootNode") 
                     : Path.GetFileName(currentFilePath);
@@ -462,35 +484,7 @@ namespace HoboEX_ModMaker
 
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            NewFile();
-        }
-
-        private void openToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            using (OpenFileDialog ofd = new OpenFileDialog())
-            {
-                ofd.Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*";
-                if (ofd.ShowDialog() == DialogResult.OK)
-                {
-                    try
-                    {
-                        string json = File.ReadAllText(ofd.FileName);
-                        var loaded = JsonSerializer.Deserialize<DialogueFileRoot>(json);
-                        if (loaded != null)
-                        {
-                            currentRoot = loaded;
-                            currentFilePath = ofd.FileName;
-                            LoadL10n(ofd.FileName);
-                            UpdateTree();
-                            toolStripStatusLabel1.Text = string.Format(LocalizationManager.Get("FileOpened"), Path.GetFileName(ofd.FileName));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show(string.Format(LocalizationManager.Get("LoadError"), ex.Message), LocalizationManager.Get("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
+            NewMod();
         }
 
         private void openModToolStripMenuItem_Click(object sender, EventArgs e)
@@ -578,6 +572,14 @@ namespace HoboEX_ModMaker
                             currentReputations = JsonSerializer.Deserialize<ReputationRootJson>(json);
                         }
                         else currentReputations = null;
+
+                        string infoPath = Path.Combine(parentDir, "info.json");
+                        if (File.Exists(infoPath))
+                        {
+                            string json = File.ReadAllText(infoPath);
+                            currentModInfo = JsonSerializer.Deserialize<ModInfo>(json);
+                        }
+                        else currentModInfo = new ModInfo { name = Path.GetFileName(parentDir) };
                     }
                 }
                 catch (Exception ex)
@@ -628,12 +630,13 @@ namespace HoboEX_ModMaker
 
         private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using (SaveFileDialog sfd = new SaveFileDialog())
+            using (FolderBrowserDialog fbd = new FolderBrowserDialog())
             {
-                sfd.Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*";
-                if (sfd.ShowDialog() == DialogResult.OK)
+                if (fbd.ShowDialog() == DialogResult.OK)
                 {
-                    Save(sfd.FileName);
+                    string path = Path.Combine(fbd.SelectedPath, "options");
+                    if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+                    Save(path);
                 }
             }
         }
@@ -657,6 +660,17 @@ namespace HoboEX_ModMaker
                         var rootForFile = new DialogueFileRoot { dialogues = group.ToList() };
                         
                         SaveFileAndL10n(filePath, rootForFile);
+                        savedCount++;
+                    }
+
+                    // Handle dialogues WITHOUT source path (manually added in new mod)
+                    var unsaved = currentRoot.dialogues.Where(d => string.IsNullOrEmpty(d.SourceFilePath)).ToList();
+                    if (unsaved.Count > 0)
+                    {
+                        string defaultPath = Path.Combine(path, "mod_dialogues.json");
+                        var rootForFile = new DialogueFileRoot { dialogues = unsaved };
+                        SaveFileAndL10n(defaultPath, rootForFile);
+                        foreach (var npc in unsaved) npc.SourceFilePath = defaultPath;
                         savedCount++;
                     }
 
@@ -687,6 +701,18 @@ namespace HoboEX_ModMaker
                             string repsPath = Path.Combine(parentDir, "reputations.json");
                             File.WriteAllText(repsPath, JsonSerializer.Serialize(currentReputations, saveOptions));
                             Log($"Saved reputations.json to {repsPath}");
+                        }
+                    }
+
+                    // Save info.json if currentModInfo is active
+                    if (currentModInfo != null)
+                    {
+                        string parentDir = Directory.GetParent(path)?.FullName;
+                        if (!string.IsNullOrEmpty(parentDir))
+                        {
+                            string infoPath = Path.Combine(parentDir, "info.json");
+                            File.WriteAllText(infoPath, JsonSerializer.Serialize(currentModInfo, saveOptions));
+                            Log($"Saved info.json to {infoPath}");
                         }
                     }
 
@@ -861,8 +887,18 @@ namespace HoboEX_ModMaker
             }
             bool canShowPaste = tag is DialogueOptionJson || tag is DialogueReactionJson || tag is NpcDialogueJson || isActionsNode || isConditionsNode;
             bool canDelete = !(tag is DialogueFileRoot) && !isFileNode; // Prevent deleting the file node wrapper itself in mod mode 
+            bool isModRoot = tag is ModInfo;
 
             // 2. Apply Visibility & Localization
+            addItemsJsonToolStripMenuItem.Visible = isModRoot && currentItems == null;
+            addItemsJsonToolStripMenuItem.Text = LocalizationManager.Get("ContextAddItemsJson");
+
+            addReputationsJsonToolStripMenuItem.Visible = isModRoot && currentReputations == null;
+            addReputationsJsonToolStripMenuItem.Text = LocalizationManager.Get("ContextAddReputationsJson");
+
+            addOptionsDirToolStripMenuItem.Visible = isModRoot && currentRoot == null;
+            addOptionsDirToolStripMenuItem.Text = LocalizationManager.Get("ContextAddOptionsDir");
+
             bool canAddFile = tag is DialogueFileRoot && isModFolder;
             addFileToolStripMenuItem.Visible = canAddFile;
             addFileToolStripMenuItem.Text = LocalizationManager.Get("MenuAddFile") ?? "Add Dialogue File (.json)";
