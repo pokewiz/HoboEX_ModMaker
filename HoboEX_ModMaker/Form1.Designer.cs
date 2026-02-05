@@ -21,6 +21,7 @@
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
             newToolStripMenuItem = new ToolStripMenuItem();
+            openModToolStripMenuItem = new ToolStripMenuItem();
             saveToolStripMenuItem = new ToolStripMenuItem();
             saveAsToolStripMenuItem = new ToolStripMenuItem();
             languageToolStripMenuItem = new ToolStripMenuItem();
@@ -31,7 +32,7 @@
             syncL10nToolStripMenuItem = new ToolStripMenuItem();
             aiL10nToolStripMenuItem = new ToolStripMenuItem();
             aiSettingsToolStripMenuItem = new ToolStripMenuItem();
-            openModToolStripMenuItem = new ToolStripMenuItem();
+            aboutToolStripMenuItem = new ToolStripMenuItem();
             splitContainerMain = new SplitContainer();
             splitContainer1 = new SplitContainer();
             treeView1 = new TreeView();
@@ -48,6 +49,7 @@
             pasteToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator2 = new ToolStripSeparator();
             deleteToolStripMenuItem = new ToolStripMenuItem();
+            showInExplorerToolStripMenuItem = new ToolStripMenuItem();
             propertyGrid1 = new PropertyGrid();
             txtConsole = new RichTextBox();
             statusStrip1 = new StatusStrip();
@@ -67,7 +69,7 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, languageToolStripMenuItem, toolsToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, languageToolStripMenuItem, toolsToolStripMenuItem, aboutToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1008, 25);
@@ -84,28 +86,28 @@
             // newToolStripMenuItem
             // 
             newToolStripMenuItem.Name = "newToolStripMenuItem";
-            newToolStripMenuItem.Size = new Size(121, 22);
+            newToolStripMenuItem.Size = new Size(140, 22);
             newToolStripMenuItem.Text = "New";
             newToolStripMenuItem.Click += newToolStripMenuItem_Click;
             // 
             // openModToolStripMenuItem
             // 
             openModToolStripMenuItem.Name = "openModToolStripMenuItem";
-            openModToolStripMenuItem.Size = new Size(130, 22);
+            openModToolStripMenuItem.Size = new Size(140, 22);
             openModToolStripMenuItem.Text = "Open Mod";
             openModToolStripMenuItem.Click += openModToolStripMenuItem_Click;
             // 
             // saveToolStripMenuItem
             // 
             saveToolStripMenuItem.Name = "saveToolStripMenuItem";
-            saveToolStripMenuItem.Size = new Size(121, 22);
+            saveToolStripMenuItem.Size = new Size(140, 22);
             saveToolStripMenuItem.Text = "Save";
             saveToolStripMenuItem.Click += saveToolStripMenuItem_Click;
             // 
             // saveAsToolStripMenuItem
             // 
             saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
-            saveAsToolStripMenuItem.Size = new Size(121, 22);
+            saveAsToolStripMenuItem.Size = new Size(140, 22);
             saveAsToolStripMenuItem.Text = "Save As";
             saveAsToolStripMenuItem.Click += saveAsToolStripMenuItem_Click;
             // 
@@ -165,6 +167,13 @@
             aiSettingsToolStripMenuItem.Text = "AI Settings";
             aiSettingsToolStripMenuItem.Click += aiSettingsToolStripMenuItem_Click;
             // 
+            // aboutToolStripMenuItem
+            // 
+            aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            aboutToolStripMenuItem.Size = new Size(55, 21);
+            aboutToolStripMenuItem.Text = "About";
+            aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
+            // 
             // splitContainerMain
             // 
             splitContainerMain.Dock = DockStyle.Fill;
@@ -180,7 +189,7 @@
             // 
             splitContainerMain.Panel2.Controls.Add(txtConsole);
             splitContainerMain.Size = new Size(1008, 804);
-            splitContainerMain.SplitterDistance = 666;
+            splitContainerMain.SplitterDistance = 665;
             splitContainerMain.TabIndex = 3;
             // 
             // splitContainer1
@@ -196,7 +205,7 @@
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(propertyGrid1);
-            splitContainer1.Size = new Size(1008, 666);
+            splitContainer1.Size = new Size(1008, 665);
             splitContainer1.SplitterDistance = 333;
             splitContainer1.TabIndex = 1;
             // 
@@ -206,16 +215,16 @@
             treeView1.Dock = DockStyle.Fill;
             treeView1.Location = new Point(0, 0);
             treeView1.Name = "treeView1";
-            treeView1.Size = new Size(333, 666);
+            treeView1.Size = new Size(333, 665);
             treeView1.TabIndex = 0;
             treeView1.AfterSelect += treeView1_AfterSelect;
             treeView1.NodeMouseClick += treeView1_NodeMouseClick;
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { addFileToolStripMenuItem, addOptionToolStripMenuItem, addReactionToolStripMenuItem, addActionToolStripMenuItem, addConditionToolStripMenuItem, addL10nToolStripMenuItem, toolStripSeparator1, copyToolStripMenuItem, cutToolStripMenuItem, pasteToolStripMenuItem, toolStripSeparator2, deleteToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { addFileToolStripMenuItem, addOptionToolStripMenuItem, addReactionToolStripMenuItem, addActionToolStripMenuItem, addConditionToolStripMenuItem, addL10nToolStripMenuItem, toolStripSeparator1, copyToolStripMenuItem, cutToolStripMenuItem, pasteToolStripMenuItem, toolStripSeparator2, deleteToolStripMenuItem, showInExplorerToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(173, 214);
+            contextMenuStrip1.Size = new Size(173, 236);
             contextMenuStrip1.Opening += contextMenuStrip1_Opening;
             // 
             // addFileToolStripMenuItem
@@ -301,12 +310,19 @@
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
+            // showInExplorerToolStripMenuItem
+            // 
+            showInExplorerToolStripMenuItem.Name = "showInExplorerToolStripMenuItem";
+            showInExplorerToolStripMenuItem.Size = new Size(172, 22);
+            showInExplorerToolStripMenuItem.Text = "Show in Explorer";
+            showInExplorerToolStripMenuItem.Click += showInExplorerToolStripMenuItem_Click;
+            // 
             // propertyGrid1
             // 
             propertyGrid1.Dock = DockStyle.Fill;
             propertyGrid1.Location = new Point(0, 0);
             propertyGrid1.Name = "propertyGrid1";
-            propertyGrid1.Size = new Size(671, 666);
+            propertyGrid1.Size = new Size(671, 665);
             propertyGrid1.TabIndex = 0;
             propertyGrid1.PropertyValueChanged += propertyGrid1_PropertyValueChanged;
             // 
@@ -318,7 +334,7 @@
             txtConsole.Location = new Point(0, 0);
             txtConsole.Name = "txtConsole";
             txtConsole.ReadOnly = true;
-            txtConsole.Size = new Size(1008, 134);
+            txtConsole.Size = new Size(1008, 135);
             txtConsole.TabIndex = 0;
             txtConsole.Text = "";
             // 
@@ -347,7 +363,7 @@
             Controls.Add(statusStrip1);
             MainMenuStrip = menuStrip1;
             Name = "Form1";
-            Text = "HoboEX Dialogue Editor";
+            Text = "HoboEX Mod Editor";
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             splitContainerMain.Panel1.ResumeLayout(false);
@@ -382,6 +398,7 @@
         private ToolStripMenuItem aiL10nToolStripMenuItem;
         private ToolStripMenuItem aiSettingsToolStripMenuItem;
         private ToolStripMenuItem syncL10nToolStripMenuItem;
+        private ToolStripMenuItem aboutToolStripMenuItem;
         private SplitContainer splitContainer1;
         private SplitContainer splitContainerMain;
         private RichTextBox txtConsole;
@@ -402,5 +419,6 @@
         private ToolStripMenuItem pasteToolStripMenuItem;
         private ToolStripSeparator toolStripSeparator2;
         private ToolStripMenuItem deleteToolStripMenuItem;
+        private ToolStripMenuItem showInExplorerToolStripMenuItem;
     }
 }

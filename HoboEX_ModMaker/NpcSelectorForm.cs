@@ -13,7 +13,7 @@ namespace HoboEX_ModMaker
 
         public NpcSelectorForm(string[] archetypes)
         {
-            this.Text = "Select NPC Archetype";
+            this.Text = LocalizationManager.Get("NpcSelectorTitle");
             this.Size = new System.Drawing.Size(300, 150);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -24,8 +24,8 @@ namespace HoboEX_ModMaker
             comboBox1.Items.AddRange(archetypes);
             if (comboBox1.Items.Count > 0) comboBox1.SelectedIndex = 0;
 
-            btnOk = new Button { Text = "OK", Left = 100, Top = 65, DialogResult = DialogResult.OK };
-            btnCancel = new Button { Text = "Cancel", Left = 185, Top = 65, DialogResult = DialogResult.Cancel };
+            btnOk = new Button { Text = LocalizationManager.Get("BtnOK"), Left = 100, Top = 65, DialogResult = DialogResult.OK };
+            btnCancel = new Button { Text = LocalizationManager.Get("BtnCancel"), Left = 185, Top = 65, DialogResult = DialogResult.Cancel };
 
             this.Controls.Add(comboBox1);
             this.Controls.Add(btnOk);

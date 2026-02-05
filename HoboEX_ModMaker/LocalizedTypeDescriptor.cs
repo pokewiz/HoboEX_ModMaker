@@ -73,9 +73,23 @@ namespace HoboEX_ModMaker
             // Map class names to short keys used in JSON (e.g. DialogueOptionJson -> Option)
             if (className == "L10nItem") className = "L10n";
             else if (className == "NpcDialogueJson") className = "NPC";
+            else if (className.Contains("Consumable")) className = "Item";
+            else if (className.Contains("Scrap")) className = "Item";
+            else if (className.Contains("Bag")) className = "Item";
+            else if (className.Contains("Gear") && !className.Contains("Parameter")) className = "Item";
+            else if (className.Contains("Recipe")) className = "Recipe";
+            else if (className.Contains("Shop")) className = "Shop";
+            else if (className.Contains("Package")) className = "Package";
+            else if (className.Contains("Salvage")) className = "Salvage";
+            else if (className.Contains("Archetype")) className = "Arch";
+            else if (className.Contains("Reputation")) className = "Reputation";
+            else if (className == "ModInfo") className = "Mod";
+            else if (className == "ChangeEntry") className = "Change";
+            else if (className == "ParameterChangeJson") className = "Param";
             else 
             {
                 if (className.EndsWith("Json")) className = className.Substring(0, className.Length - 4);
+                if (className.EndsWith("Item")) className = className.Substring(0, className.Length - 4);
                 if (className.StartsWith("Dialogue")) className = className.Substring(8);
             }
 

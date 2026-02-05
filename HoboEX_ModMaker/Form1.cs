@@ -12,20 +12,50 @@ namespace HoboEX_ModMaker
 {
     public partial class Form1 : Form
     {
+        public class NpcStringItem
+        {
+            [ReadOnly(true), Category("Basic")]
+            public string ID { get; set; }
+
+            [Browsable(false)]
+            public Dictionary<string, string> Data { get; set; }
+
+            [Browsable(false)]
+            public NpcRootJson Root { get; set; }
+
+            public NpcStringItem(string id, Dictionary<string, string> data, NpcRootJson root)
+            {
+                ID = id;
+                Data = data;
+                Root = root;
+            }
+
+            public override string ToString() => $"Group: {ID}";
+        }
+
         private string currentFilePath = null;
         private DialogueFileRoot currentRoot = null;
         private RootJson currentItems = null;
         private ReputationRootJson currentReputations = null;
+        private NpcRootJson currentNpcs = null;
         private ModInfo currentModInfo = null;
+        private QuestRootJson currentQuests = null;
         private object clipboardData = null;
 
         private ToolStripMenuItem addItemsJsonToolStripMenuItem;
         private ToolStripMenuItem addReputationsJsonToolStripMenuItem;
+        private ToolStripMenuItem addNpcJsonToolStripMenuItem;
         private ToolStripMenuItem addOptionsDirToolStripMenuItem;
+        private ToolStripMenuItem addQuestsDirToolStripMenuItem;
+        private ToolStripMenuItem addQuestToolStripMenuItem;
+        private ToolStripMenuItem addQuestNodeToolStripMenuItem;
+
+        private ToolStripSeparator questSeparator;
 
         public Form1()
         {
             LocalizationManager.LoadSettings();
+            UpdateCustomArchetypes();
             InitializeComponent();
             
             // Register localized type providers
@@ -34,8 +64,8 @@ namespace HoboEX_ModMaker
             LocalizedTypeDescriptorProvider.Register(typeof(DialogueActionJson));
             LocalizedTypeDescriptorProvider.Register(typeof(DialogueConditionJson));
             LocalizedTypeDescriptorProvider.Register(typeof(NpcDialogueJson));
-            LocalizedTypeDescriptorProvider.Register(typeof(NpcDialogueJson));
             LocalizedTypeDescriptorProvider.Register(typeof(L10nItem));
+            LocalizedTypeDescriptorProvider.Register(typeof(NpcStringItem));
 
             // Register Items.json types
             LocalizedTypeDescriptorProvider.Register(typeof(ConsumableJsonItem));
@@ -48,7 +78,19 @@ namespace HoboEX_ModMaker
             LocalizedTypeDescriptorProvider.Register(typeof(SalvagePatternJson));
             LocalizedTypeDescriptorProvider.Register(typeof(ArchetypeJson));
             LocalizedTypeDescriptorProvider.Register(typeof(ReputationJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(NpcRootJson));
             LocalizedTypeDescriptorProvider.Register(typeof(ModInfo));
+
+            // Register Quest types
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestNodeJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestActionNowJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestActionWaitJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestActionConvJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestItemRequirementJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestBoolRequirementJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(QuestNumRequirementJson));
+            LocalizedTypeDescriptorProvider.Register(typeof(MapPointJson));
 
             // Initialize extra menu items
             addItemsJsonToolStripMenuItem = new ToolStripMenuItem();
@@ -56,13 +98,30 @@ namespace HoboEX_ModMaker
             
             addReputationsJsonToolStripMenuItem = new ToolStripMenuItem();
             addReputationsJsonToolStripMenuItem.Click += (s, e) => { currentReputations = new ReputationRootJson(); UpdateTree(); };
+
+            addNpcJsonToolStripMenuItem = new ToolStripMenuItem();
+            addNpcJsonToolStripMenuItem.Click += (s, e) => { currentNpcs = new NpcRootJson(); UpdateTree(); };
             
             addOptionsDirToolStripMenuItem = new ToolStripMenuItem();
             addOptionsDirToolStripMenuItem.Click += (s, e) => { currentRoot = new DialogueFileRoot(); UpdateTree(); };
 
+            addQuestsDirToolStripMenuItem = new ToolStripMenuItem();
+            addQuestsDirToolStripMenuItem.Click += (s, e) => { currentQuests = new QuestRootJson(); UpdateTree(); };
+
+            addQuestToolStripMenuItem = new ToolStripMenuItem();
+            addQuestToolStripMenuItem.Click += addQuestToolStripMenuItem_Click;
+
+            addQuestNodeToolStripMenuItem = new ToolStripMenuItem();
+            addQuestNodeToolStripMenuItem.Click += addQuestNodeToolStripMenuItem_Click;
+
             contextMenuStrip1.Items.Insert(0, addItemsJsonToolStripMenuItem);
             contextMenuStrip1.Items.Insert(1, addReputationsJsonToolStripMenuItem);
-            contextMenuStrip1.Items.Insert(2, addOptionsDirToolStripMenuItem);
+            contextMenuStrip1.Items.Insert(2, addNpcJsonToolStripMenuItem);
+            contextMenuStrip1.Items.Insert(3, addOptionsDirToolStripMenuItem);
+            contextMenuStrip1.Items.Insert(4, addQuestsDirToolStripMenuItem);
+            questSeparator = new ToolStripSeparator();
+            contextMenuStrip1.Items.Add(questSeparator);
+            contextMenuStrip1.Items.Add(addQuestNodeToolStripMenuItem);
 
             // Resize PropertyGrid Description Area
             foreach (Control c in propertyGrid1.Controls)
@@ -137,12 +196,21 @@ namespace HoboEX_ModMaker
             syncL10nToolStripMenuItem.Text = LocalizationManager.Get("MenuSyncL10n");
             aiSettingsToolStripMenuItem.Text = LocalizationManager.Get("AiSettingsTitle");
             openModToolStripMenuItem.Text = LocalizationManager.Get("MenuOpenMod") ?? "Open Mod";
+            aboutToolStripMenuItem.Text = LocalizationManager.Get("MenuAbout") ?? "About";
 
             // Status
             toolStripStatusLabel1.Text = LocalizationManager.Get("Ready");
 
             // Context Menu (titles updated in Opening event usually, but set defaults)
             deleteToolStripMenuItem.Text = LocalizationManager.Get("ContextDelete");
+
+            addItemsJsonToolStripMenuItem.Text = (LocalizationManager.Get("MenuAddItems") ?? "Add items.json");
+            addReputationsJsonToolStripMenuItem.Text = (LocalizationManager.Get("MenuAddReputations") ?? "Add reputations.json");
+            addNpcJsonToolStripMenuItem.Text = (LocalizationManager.Get("MenuAddNpcs") ?? "Add NPC.json");
+            addOptionsDirToolStripMenuItem.Text = (LocalizationManager.Get("MenuAddOptions") ?? "Add options folder");
+            addQuestsDirToolStripMenuItem.Text = (LocalizationManager.Get("MenuAddQuests") ?? "Add quests folder");
+            addQuestToolStripMenuItem.Text = (LocalizationManager.Get("ContextAddQuest") ?? "Add New Quest");
+            addQuestNodeToolStripMenuItem.Text = (LocalizationManager.Get("ContextAddQuestNode") ?? "Add New Quest Node");
 
             this.Text = "HoboEX Mod Editor";
 
@@ -155,6 +223,8 @@ namespace HoboEX_ModMaker
             currentRoot = null; 
             currentItems = null;
             currentReputations = null;
+            currentNpcs = null;
+            currentQuests = null;
             currentModInfo = new ModInfo { name = "New Mod" };
             UpdateTree();
         }
@@ -164,8 +234,38 @@ namespace HoboEX_ModMaker
             return !string.IsNullOrEmpty(currentFilePath) && Directory.Exists(currentFilePath);
         }
 
+        private void UpdateCustomArchetypes()
+        {
+            var list = new List<string>();
+            if (currentNpcs != null)
+            {
+                if (currentNpcs.archetypes != null)
+                    list.AddRange(currentNpcs.archetypes.Select(a => a.key).Where(k => !string.IsNullOrEmpty(k)));
+                
+                if (currentNpcs.conversions != null)
+                    list.AddRange(currentNpcs.conversions.Select(c => c.archetype).Where(k => !string.IsNullOrEmpty(k)));
+                
+                if (currentNpcs.strings != null && currentNpcs.strings.strings != null)
+                {
+                    list.AddRange(currentNpcs.strings.strings.Keys);
+                }
+            }
+
+            if (DialogueModels.CustomArchetypes == null) DialogueModels.CustomArchetypes = new List<string>();
+            DialogueModels.CustomArchetypes.Clear();
+            DialogueModels.CustomArchetypes.AddRange(list.Distinct());
+
+            if (currentNpcs != null && currentNpcs.strings != null)
+            {
+                DialogueModels.CurrentNpcStrings = currentNpcs.strings.strings;
+            }
+
+            DialogueModels.NotifyArchetypesChanged();
+        }
+
         private void UpdateTree()
         {
+            UpdateCustomArchetypes();
             treeView1.BeginUpdate();
             treeView1.Nodes.Clear();
             
@@ -191,36 +291,77 @@ namespace HoboEX_ModMaker
                 treeView1.Nodes.Add(modRootNode);
 
                 // 1. Items.json Node
+                void AddCategory<T>(string key, IEnumerable<T> items, TreeNode parentNode)
+                {
+                    if (items == null || !items.Any()) return;
+                    string title = LocalizationManager.Get(key) ?? key.Replace("Node", "");
+                    var catNode = new TreeNode(title) { Tag = items, ImageKey = "folder", SelectedImageKey = "folder" };
+                    parentNode.Nodes.Add(catNode);
+                    foreach (var item in items)
+                    {
+                        catNode.Nodes.Add(new TreeNode(item.ToString()) { Tag = item });
+                    }
+                }
+
                 if (currentItems != null)
                 {
                     var itemsNode = new TreeNode("items.json") { Tag = currentItems, ImageKey = "file", SelectedImageKey = "file" };
                     modRootNode.Nodes.Add(itemsNode);
 
-                    void AddCategory<T>(string key, IEnumerable<T> items)
-                    {
-                        if (items == null || !items.Any()) return;
-                        string title = LocalizationManager.Get(key) ?? key.Replace("Node", "");
-                        var catNode = new TreeNode(title) { Tag = items, ImageKey = "folder", SelectedImageKey = "folder" };
-                        itemsNode.Nodes.Add(catNode);
-                        foreach (var item in items)
-                        {
-                            catNode.Nodes.Add(new TreeNode(item.ToString()) { Tag = item });
-                        }
-                    }
-
-                    AddCategory("NodeConsumables", currentItems.consumables);
-                    AddCategory("NodeScraps", currentItems.scraps);
-                    AddCategory("NodeBags", currentItems.bags);
-                    AddCategory("NodeGears", currentItems.gears);
-                    AddCategory("NodeRecipes", currentItems.recipes);
-                    AddCategory("NodeShops", currentItems.shops);
-                    AddCategory("NodeSells", currentItems.sells);
-                    AddCategory("NodePackages", currentItems.packageTables);
-                    AddCategory("NodeSalvage", currentItems.salvagePatterns);
-                    AddCategory("NodeArchetypes", currentItems.archetypes);
+                    AddCategory("NodeConsumables", currentItems.consumables, itemsNode);
+                    AddCategory("NodeScraps", currentItems.scraps, itemsNode);
+                    AddCategory("NodeBags", currentItems.bags, itemsNode);
+                    AddCategory("NodeGears", currentItems.gears, itemsNode);
+                    AddCategory("NodeRecipes", currentItems.recipes, itemsNode);
+                    AddCategory("NodeShops", currentItems.shops, itemsNode);
+                    AddCategory("NodeSells", currentItems.sells, itemsNode);
+                    AddCategory("NodePackages", currentItems.packageTables, itemsNode);
+                    AddCategory("NodeSalvage", currentItems.salvagePatterns, itemsNode);
+                    // AddCategory("NodeArchetypes", currentItems.archetypes, itemsNode); // Moved to NPC.json
                 }
 
-                // 2. Reputations.json Node
+                // 2. NPC.json Node
+                if (currentNpcs != null)
+                {
+                    var npcsNode = new TreeNode("NPC.json") { Tag = currentNpcs, ImageKey = "file", SelectedImageKey = "file" };
+                    modRootNode.Nodes.Add(npcsNode);
+                    AddCategory("NodeArchetypes", currentNpcs.archetypes, npcsNode);
+                    
+                    if (currentNpcs.conversions != null)
+                    {
+                        string title = LocalizationManager.Get("NodeConversions") ?? "Conversions";
+                        var convsNode = new TreeNode(title) { Tag = currentNpcs.conversions, ImageKey = "folder", SelectedImageKey = "folder" };
+                        npcsNode.Nodes.Add(convsNode);
+                        foreach (var conv in currentNpcs.conversions)
+                        {
+                            // Sync l10n buffer for ToString()
+                            if (currentNpcs.strings != null && currentNpcs.strings.strings != null && currentNpcs.strings.strings.ContainsKey(conv.archetype))
+                            {
+                                conv.l10n = currentNpcs.strings.strings[conv.archetype];
+                            }
+
+                            var convNode = new TreeNode(conv.ToString()) { Tag = conv };
+                            convsNode.Nodes.Add(convNode);
+
+                            // Add L10n as sub-nodes
+                            if (currentNpcs.strings != null && currentNpcs.strings.strings != null && currentNpcs.strings.strings.ContainsKey(conv.archetype))
+                            {
+                                var dict = currentNpcs.strings.strings[conv.archetype];
+                                var stringItem = new NpcStringItem(conv.archetype, dict, currentNpcs);
+                                foreach (var lang in dict)
+                                {
+                                    var l10nNode = new TreeNode(new L10nItem(lang.Key, lang.Value, stringItem).ToString())
+                                    {
+                                        Tag = new L10nItem(lang.Key, lang.Value, stringItem)
+                                    };
+                                    convNode.Nodes.Add(l10nNode);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Reputations.json Node
                 if (currentReputations != null)
                 {
                     string title = LocalizationManager.Get("NodeReputations") ?? "Reputations";
@@ -244,6 +385,17 @@ namespace HoboEX_ModMaker
 
                     // Fill Options Content
                     AddOptionsContent(optionsNode);
+                }
+
+                // 4. Quests Folder Node
+                if (currentQuests != null)
+                {
+                    string questsName = "quests";
+                    var questsNode = new TreeNode(questsName) { Tag = currentQuests, ImageKey = "folder", SelectedImageKey = "folder" };
+                    modRootNode.Nodes.Add(questsNode);
+
+                    // Fill Quests Content
+                    AddQuestsContent(questsNode);
                 }
                 
                 modRootNode.Expand();
@@ -275,7 +427,8 @@ namespace HoboEX_ModMaker
                 foreach (var file in files)
                 {
                     string fileName = Path.GetFileName(file);
-                    var fileNode = new TreeNode(fileName) { Tag = file };
+                    var nodeTag = new DialogueFileRoot { SourceFilePath = file };
+                    var fileNode = new TreeNode(fileName) { Tag = nodeTag };
                     rootNode.Nodes.Add(fileNode);
 
                     var npcs = currentRoot.dialogues.Where(d => d.SourceFilePath == file);
@@ -294,6 +447,132 @@ namespace HoboEX_ModMaker
                     var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
                     rootNode.Nodes.Add(npcNode);
                     foreach (var opt in npc.entryOptions) AddOptionNode(npcNode, opt);
+                }
+            }
+        }
+
+        private void AddQuestsContent(TreeNode rootNode)
+        {
+            if (IsModFolderMode())
+            {
+                string questsPath = Path.Combine(Directory.GetParent(currentFilePath).FullName, "quests");
+                if (Directory.Exists(questsPath))
+                {
+                    var files = Directory.GetFiles(questsPath, "*.json", SearchOption.TopDirectoryOnly)
+                        .Where(f => !f.EndsWith("_l10n.json"))
+                        .OrderBy(f => f)
+                        .ToList();
+
+                    foreach (var file in files)
+                    {
+                        string fileName = Path.GetFileName(file);
+                        var nodeTag = new QuestRootJson { SourceFilePath = file }; // Set source file path
+                        var fileNode = new TreeNode(fileName) { Tag = nodeTag };
+                        rootNode.Nodes.Add(fileNode);
+
+                        var quests = currentQuests?.quests.Where(d => d.SourceFilePath == file);
+                        if (quests != null)
+                        {
+                            foreach (var quest in quests)
+                            {
+                                AddQuestNode(fileNode, quest);
+                            }
+                        }
+                    }
+                }
+            }
+            else if (currentQuests != null)
+            {
+                foreach (var quest in currentQuests.quests)
+                {
+                    AddQuestNode(rootNode, quest);
+                }
+            }
+        }
+
+        private void AddQuestNode(TreeNode parent, QuestJson quest)
+        {
+            var node = new TreeNode(quest.ToString()) { Tag = quest };
+            parent.Nodes.Add(node);
+            RefreshQuestNode(node);
+        }
+
+        private void RefreshQuestNode(TreeNode node)
+        {
+            if (node.Tag is not QuestJson quest) return;
+
+            node.Nodes.Clear();
+
+            // L10n Group
+            if (quest.l10n.Count > 0)
+            {
+                var l10nNode = new TreeNode(LocalizationManager.Get("NodeL10n") ?? "Localization") { ImageKey = "folder", SelectedImageKey = "folder" };
+                node.Nodes.Add(l10nNode);
+                foreach (var kvp in quest.l10n)
+                    l10nNode.Nodes.Add(new TreeNode(new L10nItem(kvp.Key, kvp.Value, quest).ToString()) { Tag = new L10nItem(kvp.Key, kvp.Value, quest) });
+            }
+
+            foreach (var qnode in quest.nodes)
+            {
+                var qNodeNode = new TreeNode(qnode.ToString()) { Tag = qnode };
+                node.Nodes.Add(qNodeNode);
+                RefreshQuestSubNode(qNodeNode);
+            }
+        }
+
+        private void RefreshQuestSubNode(TreeNode node)
+        {
+            if (node.Tag is not QuestNodeJson qnode) return;
+            node.Nodes.Clear();
+
+            if (qnode.typeAction == "ActionNow" && qnode.actionNow != null)
+            {
+                var actNode = new TreeNode(qnode.actionNow.ToString()) { Tag = qnode.actionNow };
+                node.Nodes.Add(actNode);
+                
+                // Add l10n for ActionNow
+                if (qnode.actionNow.l10n != null && qnode.actionNow.l10n.Count > 0)
+                {
+                    var l10nNode = new TreeNode(LocalizationManager.Get("NodeL10n") ?? "Localization") { ImageKey = "folder", SelectedImageKey = "folder" };
+                    actNode.Nodes.Add(l10nNode);
+                    foreach (var kvp in qnode.actionNow.l10n)
+                        l10nNode.Nodes.Add(new TreeNode(new L10nItem(kvp.Key, kvp.Value, qnode.actionNow).ToString()) { Tag = new L10nItem(kvp.Key, kvp.Value, qnode.actionNow) });
+                }
+            }
+            else if (qnode.typeAction == "ActionWait" && qnode.actionWait != null)
+            {
+                var waitNode = new TreeNode(qnode.actionWait.ToString()) { Tag = qnode.actionWait };
+                node.Nodes.Add(waitNode);
+                
+                // Add l10n for ActionWait
+                if (qnode.actionWait.l10n != null && qnode.actionWait.l10n.Count > 0)
+                {
+                    var l10nNode = new TreeNode(LocalizationManager.Get("NodeL10n") ?? "Localization") { ImageKey = "folder", SelectedImageKey = "folder" };
+                    waitNode.Nodes.Add(l10nNode);
+                    foreach (var kvp in qnode.actionWait.l10n)
+                        l10nNode.Nodes.Add(new TreeNode(new L10nItem(kvp.Key, kvp.Value, qnode.actionWait).ToString()) { Tag = new L10nItem(kvp.Key, kvp.Value, qnode.actionWait) });
+                }
+                
+                // Add requirements as sub-nodes if needed
+                if (qnode.actionWait.items != null && qnode.actionWait.items.Count > 0)
+                {
+                    var itemsNode = new TreeNode("Items") { ImageKey = "folder", SelectedImageKey = "folder" };
+                    waitNode.Nodes.Add(itemsNode);
+                    foreach(var item in qnode.actionWait.items) itemsNode.Nodes.Add(new TreeNode(item.ToString()) { Tag = item });
+                }
+            }
+            else if (qnode.typeAction == "ActionConv" && qnode.actionConv != null)
+            {
+                var convNode = new TreeNode(qnode.actionConv.ToString()) { Tag = qnode.actionConv };
+                node.Nodes.Add(convNode);
+                
+                // Add l10n for ActionConv
+                if (qnode.actionConv.l10n != null && qnode.actionConv.l10n.Count > 0)
+                {
+                    var l10nNode = new TreeNode(LocalizationManager.Get("NodeL10n") ?? "Localization") { ImageKey = "folder", SelectedImageKey = "folder" };
+                    convNode.Nodes.Add(l10nNode);
+                    foreach (var kvp in qnode.actionConv.l10n)
+                        l10nNode.Nodes.Add(new TreeNode(new L10nItem(kvp.Key, kvp.Value, qnode.actionConv).ToString()) { Tag = new L10nItem(kvp.Key, kvp.Value, qnode.actionConv) });
                 }
             }
         }
@@ -462,10 +741,20 @@ namespace HoboEX_ModMaker
                     }
                 }
 
+                if (node.Tag is ArchetypeJson)
+                {
+                    UpdateCustomArchetypes();
+                }
+
                 if (node.Tag is L10nItem item)
                 {
                     if (item.Parent is DialogueOptionJson opt) opt.l10n[item.Language] = item.Text;
-                    else if (item.Parent is DialogueReactionJson react) react.l10n[item.Language] = react.l10n[item.Language] = item.Text;
+                    else if (item.Parent is DialogueReactionJson react) react.l10n[item.Language] = item.Text;
+                    else if (item.Parent is NpcStringItem npcStr) npcStr.Data[item.Language] = item.Text;
+                    else if (item.Parent is QuestJson quest) quest.l10n[item.Language] = item.Text;
+                    else if (item.Parent is QuestActionNowJson qan) qan.l10n[item.Language] = item.Text;
+                    else if (item.Parent is QuestActionWaitJson qaw) qaw.l10n[item.Language] = item.Text;
+                    else if (item.Parent is QuestActionConvJson qac) qac.l10n[item.Language] = item.Text;
                 }
                 
                 // Recalculate text
@@ -474,9 +763,9 @@ namespace HoboEX_ModMaker
                 // If it's the main text of an option/reaction, we might want to refresh the parent label
                 if (node.Parent != null)
                 {
-                    if (node.Parent.Tag is DialogueOptionJson || node.Parent.Tag is DialogueReactionJson)
+                    if (node.Parent.Tag is DialogueOptionJson || node.Parent.Tag is DialogueReactionJson || node.Parent.Tag is NpcConversionJson || node.Parent.Tag is QuestJson)
                         node.Parent.Text = node.Parent.Tag.ToString();
-                    else if (node.Parent.Parent != null && (node.Parent.Parent.Tag is DialogueOptionJson || node.Parent.Parent.Tag is DialogueReactionJson))
+                    else if (node.Parent.Parent != null && (node.Parent.Parent.Tag is DialogueOptionJson || node.Parent.Parent.Tag is DialogueReactionJson || node.Parent.Parent.Tag is NpcConversionJson || node.Parent.Parent.Tag is QuestJson))
                          node.Parent.Parent.Text = node.Parent.Parent.Tag.ToString();
                 }
             }
@@ -532,6 +821,7 @@ namespace HoboEX_ModMaker
                             foreach (var npc in loaded.dialogues)
                             {
                                 npc.SourceFilePath = file; // Store source file path
+                                loaded.SourceFilePath = file; // Ensure root also knows path
                                 currentRoot.dialogues.Add(npc);
                                 // Load and sync L10n for THIS specific file's dialogues
                                 string l10nPath = file.Replace(".json", "_l10n.json");
@@ -573,6 +863,15 @@ namespace HoboEX_ModMaker
                         }
                         else currentReputations = null;
 
+                        string npcsPath = Path.Combine(parentDir, "NPC.json");
+                        if (File.Exists(npcsPath))
+                        {
+                            string json = File.ReadAllText(npcsPath);
+                            currentNpcs = JsonSerializer.Deserialize<NpcRootJson>(json);
+                            UpdateCustomArchetypes();
+                        }
+                        else currentNpcs = null;
+
                         string infoPath = Path.Combine(parentDir, "info.json");
                         if (File.Exists(infoPath))
                         {
@@ -580,6 +879,47 @@ namespace HoboEX_ModMaker
                             currentModInfo = JsonSerializer.Deserialize<ModInfo>(json);
                         }
                         else currentModInfo = new ModInfo { name = Path.GetFileName(parentDir) };
+
+                        // Load Quests
+                        string questsPath = Path.Combine(parentDir, "quests");
+                        if (Directory.Exists(questsPath))
+                        {
+                            currentQuests = new QuestRootJson();
+                            var questFiles = Directory.GetFiles(questsPath, "*.json", SearchOption.TopDirectoryOnly)
+                                .Where(f => !f.EndsWith("_l10n.json"))
+                                .ToList();
+
+                            foreach (var file in questFiles)
+                            {
+                                try
+                                {
+                                    string json = File.ReadAllText(file);
+                                    var loaded = JsonSerializer.Deserialize<QuestRootJson>(json);
+                                    if (loaded != null && loaded.quests != null)
+                                    {
+                                        foreach (var quest in loaded.quests)
+                                        {
+                                            quest.SourceFilePath = file;
+                                            currentQuests.quests.Add(quest);
+
+                                            // Sync L10n
+                                            string l10nPath = file.Replace(".json", "_l10n.json");
+                                            if (File.Exists(l10nPath))
+                                            {
+                                                string l10nJson = File.ReadAllText(l10nPath);
+                                                var l10n = JsonSerializer.Deserialize<DialogueL10n>(l10nJson);
+                                                if (l10n != null) SyncL10nToQuestModels(quest, l10n);
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log($"Failed to load quest {file}: {ex.Message}", true);
+                                }
+                            }
+                        }
+                        else currentQuests = null;
                     }
                 }
                 catch (Exception ex)
@@ -657,7 +997,7 @@ namespace HoboEX_ModMaker
                     foreach (var group in groups)
                     {
                         string filePath = group.Key;
-                        var rootForFile = new DialogueFileRoot { dialogues = group.ToList() };
+                        var rootForFile = new DialogueFileRoot { dialogues = group.ToList(), SourceFilePath = filePath };
                         
                         SaveFileAndL10n(filePath, rootForFile);
                         savedCount++;
@@ -704,6 +1044,19 @@ namespace HoboEX_ModMaker
                         }
                     }
 
+                    // Save NPC.json if currentNpcs is active
+                    if (currentNpcs != null)
+                    {
+                        string parentDir = Directory.GetParent(path)?.FullName;
+                        if (!string.IsNullOrEmpty(parentDir))
+                        {
+                            string npcsPath = Path.Combine(parentDir, "NPC.json");
+                            currentNpcs.UpdateRawStrings(currentNpcs.strings); // Ensure latest state is reflected in RawStrings
+                            File.WriteAllText(npcsPath, JsonSerializer.Serialize(currentNpcs, saveOptions));
+                            Log($"Saved NPC.json to {npcsPath}");
+                        }
+                    }
+
                     // Save info.json if currentModInfo is active
                     if (currentModInfo != null)
                     {
@@ -713,6 +1066,34 @@ namespace HoboEX_ModMaker
                             string infoPath = Path.Combine(parentDir, "info.json");
                             File.WriteAllText(infoPath, JsonSerializer.Serialize(currentModInfo, saveOptions));
                             Log($"Saved info.json to {infoPath}");
+                        }
+                    }
+
+                    // Save quests if currentQuests is active
+                    if (currentQuests != null)
+                    {
+                        string parentDir = Directory.GetParent(path)?.FullName;
+                        string questsPath = Path.Combine(parentDir, "quests");
+                        if (!Directory.Exists(questsPath)) Directory.CreateDirectory(questsPath);
+
+                        var qGroups = currentQuests.quests
+                            .Where(q => !string.IsNullOrEmpty(q.SourceFilePath))
+                            .GroupBy(q => q.SourceFilePath);
+
+                        foreach (var qGroup in qGroups)
+                        {
+                            var root = new QuestRootJson { quests = qGroup.ToList() };
+                            SaveQuestFileAndL10n(qGroup.Key, root);
+                        }
+
+                        // Handle unsaved quests
+                        var qUnsaved = currentQuests.quests.Where(q => string.IsNullOrEmpty(q.SourceFilePath)).ToList();
+                        if (qUnsaved.Count > 0)
+                        {
+                            string defaultPath = Path.Combine(questsPath, "mod_quests.json");
+                            var root = new QuestRootJson { quests = qUnsaved };
+                            SaveQuestFileAndL10n(defaultPath, root);
+                            foreach (var q in qUnsaved) q.SourceFilePath = defaultPath;
                         }
                     }
 
@@ -751,6 +1132,27 @@ namespace HoboEX_ModMaker
             // Save L10n specifically for the dialogues in this root
             var l10n = new DialogueL10n();
             GatherL10nFromModels(root, l10n);
+            if (l10n.strings.Count > 0)
+            {
+                string l10nPath = path.Replace(".json", "_l10n.json");
+                File.WriteAllText(l10nPath, JsonSerializer.Serialize(l10n, options));
+            }
+        }
+
+        private void SaveQuestFileAndL10n(string path, QuestRootJson root)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            };
+            string json = JsonSerializer.Serialize(root, options);
+            File.WriteAllText(path, json);
+            
+            // Save L10n specifically for the quests in this root
+            var l10n = new DialogueL10n();
+            GatherL10nFromQuestModels(root, l10n);
             if (l10n.strings.Count > 0)
             {
                 string l10nPath = path.Replace(".json", "_l10n.json");
@@ -800,6 +1202,31 @@ namespace HoboEX_ModMaker
             }
         }
 
+        private void SyncL10nToQuestModels(object root, DialogueL10n l10n)
+        {
+            if (root is QuestRootJson questRoot)
+            {
+                foreach (var quest in questRoot.quests) SyncL10nToQuestModels(quest, l10n);
+            }
+            else if (root is QuestJson quest)
+            {
+                if (!string.IsNullOrEmpty(quest.questID) && l10n.strings.TryGetValue(quest.questID, out var entries))
+                {
+                    foreach (var kvp in entries) quest.l10n[kvp.Key] = kvp.Value;
+                }
+                foreach (var node in quest.nodes) SyncL10nToQuestModels(node, l10n);
+            }
+            else if (root is QuestNodeJson node)
+            {
+                if (!string.IsNullOrEmpty(node.id) && l10n.strings.TryGetValue(node.id, out var entries))
+                {
+                    if (node.actionNow != null) foreach (var kvp in entries) node.actionNow.l10n[kvp.Key] = kvp.Value;
+                    if (node.actionWait != null) foreach (var kvp in entries) node.actionWait.l10n[kvp.Key] = kvp.Value;
+                    if (node.actionConv != null) foreach (var kvp in entries) node.actionConv.l10n[kvp.Key] = kvp.Value;
+                }
+            }
+        }
+
         private void SaveL10n(string path)
         {
             var l10n = new DialogueL10n();
@@ -836,6 +1263,37 @@ namespace HoboEX_ModMaker
             }
         }
 
+        private void GatherL10nFromQuestModels(object root, DialogueL10n l10n)
+        {
+            if (root is QuestRootJson questRoot)
+            {
+                foreach (var quest in questRoot.quests) GatherL10nFromQuestModels(quest, l10n);
+            }
+            else if (root is QuestJson quest)
+            {
+                if (!string.IsNullOrEmpty(quest.questID) && quest.l10n.Count > 0)
+                {
+                    l10n.strings[quest.questID] = new Dictionary<string, string>(quest.l10n);
+                }
+                foreach (var node in quest.nodes) GatherL10nFromQuestModels(node, l10n);
+            }
+            else if (root is QuestNodeJson node)
+            {
+                if (!string.IsNullOrEmpty(node.id))
+                {
+                    Dictionary<string, string> nodeL10n = null;
+                    if (node.actionNow != null && node.actionNow.l10n.Count > 0) nodeL10n = node.actionNow.l10n;
+                    else if (node.actionWait != null && node.actionWait.l10n.Count > 0) nodeL10n = node.actionWait.l10n;
+                    else if (node.actionConv != null && node.actionConv.l10n.Count > 0) nodeL10n = node.actionConv.l10n;
+
+                    if (nodeL10n != null)
+                    {
+                        l10n.strings[node.id] = new Dictionary<string, string>(nodeL10n);
+                    }
+                }
+            }
+        }
+
         private void contextMenuStrip1_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
             var node = treeView1.SelectedNode;
@@ -858,20 +1316,25 @@ namespace HoboEX_ModMaker
             bool isSalvage = node.Text == LocalizationManager.Get("NodeSalvage");
             bool isArchetypes = node.Text == LocalizationManager.Get("NodeArchetypes");
             bool isReputations = node.Text == LocalizationManager.Get("NodeReputations");
+            bool isConversions = node.Text == LocalizationManager.Get("NodeConversions");
 
             object parentTag = node.Tag;
-            bool canAddItem = (isConsumables || isScraps || isBags || isGears || isRecipes || isShops || isSells || isPackages || isSalvage || isArchetypes) && currentItems != null;
+            bool canAddItem = (isConsumables || isScraps || isBags || isGears || isRecipes || isShops || isSells || isPackages || isSalvage) && currentItems != null;
+            canAddItem |= isArchetypes && (currentItems != null || currentNpcs != null);
             canAddItem |= isReputations && currentReputations != null;
+            canAddItem |= isConversions && currentNpcs != null;
 
             // 1. Logic States
             bool isModFolder = IsModFolderMode();
-            bool isFileNode = tag is string && !string.IsNullOrEmpty((string)tag);
+            bool isFileNode = (tag is string s && !string.IsNullOrEmpty(s)) || 
+                              (tag is DialogueFileRoot rootFile && !string.IsNullOrEmpty(rootFile.SourceFilePath)) ||
+                              (tag is QuestRootJson questFile && node.Parent?.Text == "quests");
 
-            bool canAddOption = (tag is DialogueFileRoot && !isModFolder) || isFileNode || tag is NpcDialogueJson || tag is DialogueReactionJson;
+            bool canAddOption = (tag is DialogueFileRoot && (!isModFolder || isFileNode)) || isFileNode || tag is NpcDialogueJson || tag is DialogueReactionJson;
             bool canAddReaction = tag is DialogueOptionJson;
             bool canAddAction = tag is DialogueOptionJson || tag is DialogueReactionJson || isActionsNode;
             bool canAddCondition = tag is DialogueOptionJson || tag is DialogueReactionJson || isConditionsNode;
-            bool canAddL10n = tag is DialogueOptionJson || tag is DialogueReactionJson || isL10nNode;
+            bool canAddL10n = tag is DialogueOptionJson || tag is DialogueReactionJson || isL10nNode || tag is NpcConversionJson;
 
             bool isDataNode = tag is DialogueActionJson || tag is DialogueConditionJson || tag is DialogueOptionJson || tag is DialogueReactionJson;
             bool canCopy = isDataNode;
@@ -886,8 +1349,10 @@ namespace HoboEX_ModMaker
                 else if (clipboardData is DialogueReactionJson && tag is DialogueOptionJson) canPaste = true;
             }
             bool canShowPaste = tag is DialogueOptionJson || tag is DialogueReactionJson || tag is NpcDialogueJson || isActionsNode || isConditionsNode;
-            bool canDelete = !(tag is DialogueFileRoot) && !isFileNode; // Prevent deleting the file node wrapper itself in mod mode 
+            bool canDelete = !(tag is string) && node.Parent != null; // Allow deleting most nodes except string-based references and root
             bool isModRoot = tag is ModInfo;
+
+            bool canShowInExplorer = isFileNode || (tag is DialogueFileRoot && !string.IsNullOrEmpty((tag as DialogueFileRoot)?.SourceFilePath)) || (tag is NpcDialogueJson && !string.IsNullOrEmpty(((NpcDialogueJson)tag).SourceFilePath));
 
             // 2. Apply Visibility & Localization
             addItemsJsonToolStripMenuItem.Visible = isModRoot && currentItems == null;
@@ -896,10 +1361,18 @@ namespace HoboEX_ModMaker
             addReputationsJsonToolStripMenuItem.Visible = isModRoot && currentReputations == null;
             addReputationsJsonToolStripMenuItem.Text = LocalizationManager.Get("ContextAddReputationsJson");
 
+            addNpcJsonToolStripMenuItem.Visible = isModRoot && currentNpcs == null;
+            addNpcJsonToolStripMenuItem.Text = LocalizationManager.Get("MenuAddNpcs") ?? "Add NPC.json";
+
             addOptionsDirToolStripMenuItem.Visible = isModRoot && currentRoot == null;
             addOptionsDirToolStripMenuItem.Text = LocalizationManager.Get("ContextAddOptionsDir");
 
-            bool canAddFile = tag is DialogueFileRoot && isModFolder;
+            addQuestsDirToolStripMenuItem.Visible = isModRoot && currentQuests == null;
+            addQuestsDirToolStripMenuItem.Text = LocalizationManager.Get("MenuAddQuests") ?? "Add quests folder";
+
+            bool isOptionFolderNode = node.Text == "options" && tag == currentRoot;
+            bool isQuestFolderNode = node.Text == "quests" && tag == currentQuests;
+            bool canAddFile = (isOptionFolderNode || isQuestFolderNode) && isModFolder;
             addFileToolStripMenuItem.Visible = canAddFile;
             addFileToolStripMenuItem.Text = LocalizationManager.Get("MenuAddFile") ?? "Add Dialogue File (.json)";
 
@@ -931,7 +1404,14 @@ namespace HoboEX_ModMaker
             deleteToolStripMenuItem.Visible = canDelete;
             deleteToolStripMenuItem.Text = LocalizationManager.Get("ContextDelete");
 
-            // 3. Separator Management (Use Available for better Reliability)
+            showInExplorerToolStripMenuItem.Visible = canShowInExplorer;
+            showInExplorerToolStripMenuItem.Text = LocalizationManager.Get("ContextShowInExplorer") ?? "Show in Explorer";
+
+            // Quest-specific menu items
+            addQuestNodeToolStripMenuItem.Visible = tag is QuestJson;
+            questSeparator.Visible = addQuestNodeToolStripMenuItem.Visible;
+
+            // 3. Separator Management
             bool anyAdd = canAddOption || canAddReaction || canAddAction || canAddCondition || canAddL10n || canAddItem;
             bool anyEdit = canCopy || canCut || canShowPaste;
             bool anyDelete = canDelete;
@@ -1004,6 +1484,15 @@ namespace HoboEX_ModMaker
                 if (!string.IsNullOrEmpty(react.id)) ids.Add(react.id);
                 foreach (var o in react.options) GatherIds(o, ids);
             }
+            else if (root is QuestRootJson questRoot)
+            {
+                foreach (var q in questRoot.quests) GatherIds(q, ids);
+            }
+            else if (root is QuestJson quest)
+            {
+                if (!string.IsNullOrEmpty(quest.questID)) ids.Add(quest.questID);
+                foreach (var n in quest.nodes) ids.Add(n.id);
+            }
         }
 
         private void addFileToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1042,13 +1531,22 @@ namespace HoboEX_ModMaker
                     }
 
                     // Create physical file
-                    var newRoot = new DialogueFileRoot();
-                    var options = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-                    File.WriteAllText(fullPath, JsonSerializer.Serialize(newRoot, options));
+                    string questsPath = Path.Combine(Directory.GetParent(currentFilePath).FullName, "quests");
+                    bool isQuestFile = (treeView1.SelectedNode?.Text == "quests");
+                    string targetFolder = isQuestFile ? questsPath : currentFilePath;
+                    string targetFullPath = Path.Combine(targetFolder, name);
 
-                    // Add to current root to show in UI
-                    // We don't necessarily need to add a dummy NPC, but the SourceFilePath needs to exist for the tree
-                    // A simple way is to refresh the whole mod folder or just add a placeholder
+                    if (File.Exists(targetFullPath))
+                    {
+                        MessageBox.Show("File already exists!");
+                        return;
+                    }
+
+                    object newRoot = isQuestFile ? (object)new QuestRootJson() : (object)new DialogueFileRoot();
+                    var options = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+                    File.WriteAllText(targetFullPath, JsonSerializer.Serialize(newRoot, options));
+
+                    // Refresh
                     LoadModFolder(currentFilePath); 
                 }
             }
@@ -1061,6 +1559,24 @@ namespace HoboEX_ModMaker
 
             if (node.Tag is DialogueFileRoot root)
             {
+                // If this root has a SourceFilePath, it's a file node in ModFolder mode
+                if (!string.IsNullOrEmpty(root.SourceFilePath) && IsModFolderMode())
+                {
+                    using (var selector = new NpcSelectorForm(DialogueModels.NPC_ARCHETYPES))
+                    {
+                        if (selector.ShowDialog() == DialogResult.OK)
+                        {
+                            var npc = new NpcDialogueJson { npcArchetype = selector.SelectedArchetype, SourceFilePath = root.SourceFilePath };
+                            currentRoot.dialogues.Add(npc); // Add to global root
+                            var npcNode = new TreeNode(npc.ToString()) { Tag = npc };
+                            node.Nodes.Add(npcNode);
+                            node.Expand();
+                        }
+                    }
+                    return;
+                }
+
+                // Normal root behavior (legacy or non-folder mode root)
                 using (var selector = new NpcSelectorForm(DialogueModels.NPC_ARCHETYPES))
                 {
                     if (selector.ShowDialog() == DialogResult.OK)
@@ -1102,7 +1618,7 @@ namespace HoboEX_ModMaker
                 node.Expand();
             }
             // Handle Item Categories
-            else if (currentItems != null || currentReputations != null)
+            else if (currentItems != null || currentReputations != null || currentNpcs != null)
             {
                 string nodeText = node.Text;
                 
@@ -1124,10 +1640,12 @@ namespace HoboEX_ModMaker
                     AddItem(node, new PackageTableJsonItem());
                 else if (nodeText == LocalizationManager.Get("NodeSalvage") && currentItems != null)
                     AddItem(node, new SalvagePatternJson());
-                else if (nodeText == LocalizationManager.Get("NodeArchetypes") && currentItems != null)
+                else if (nodeText == LocalizationManager.Get("NodeArchetypes") && (currentNpcs != null || currentItems != null))
                     AddItem(node, new ArchetypeJson());
                 else if (nodeText == LocalizationManager.Get("NodeReputations") && currentReputations != null)
                     AddItem(node, new ReputationJson());
+                else if (nodeText == LocalizationManager.Get("NodeConversions") && currentNpcs != null)
+                    AddItem(node, new NpcConversionJson());
             }
 
             // Helper for ID and adding
@@ -1187,13 +1705,46 @@ namespace HoboEX_ModMaker
                 }
                 else if (newItem is ArchetypeJson a)
                 {
-                    a.key = "New_Archetype";
-                    currentItems.archetypes.Add(a);
+                    // Find max integer ID from all sources (archetypes, conversions, and strings)
+                    var allArchetypeIds = currentNpcs.archetypes.Select(x => x.key)
+                        .Concat(currentNpcs.conversions.Select(x => x.archetype))
+                        .Concat(currentNpcs.strings.strings.Keys);
+                    
+                    int maxId = 2999; // Default starting before 3000
+                    foreach (var idStr in allArchetypeIds)
+                    {
+                        if (int.TryParse(idStr, out int val))
+                        {
+                            if (val > maxId) maxId = val;
+                        }
+                    }
+                    
+                    a.key = (maxId + 1).ToString();
+                    if (currentNpcs != null) currentNpcs.archetypes.Add(a);
                 }
                 else if (newItem is ReputationJson rep)
                 {
                     rep.archetype = "Hobo_Majsner";
                     currentReputations.reputations.Add(rep);
+                }
+                else if (newItem is NpcConversionJson conv)
+                {
+                    // 从现有的 conversions 中找到最大的数字 ID
+                    int maxId = 2999; // 默认从 3000 开始
+                    if (currentNpcs.conversions != null && currentNpcs.conversions.Any())
+                    {
+                        foreach (var existingConv in currentNpcs.conversions)
+                        {
+                            if (int.TryParse(existingConv.archetype, out int val))
+                            {
+                                if (val > maxId) maxId = val;
+                            }
+                        }
+                    }
+
+                    conv.archetype = (maxId + 1).ToString();
+                    conv.path = "AI/New_NPC_Path";
+                    currentNpcs.conversions.Add(conv);
                 }
 
                 var newNode = new TreeNode(newItem.ToString()) { Tag = newItem };
@@ -1219,6 +1770,45 @@ namespace HoboEX_ModMaker
             ids.AddRange(currentItems.bags.Select(x => x.id));
             ids.AddRange(currentItems.gears.Select(x => x.id));
             return ids;
+        }
+
+        private void addQuestToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var node = treeView1.SelectedNode;
+            if (node == null || currentQuests == null) return;
+
+            var newQuest = new QuestJson { questID = "New_Quest_" + (DateTime.Now.Ticks % 1000), questTitle = "New Quest" };
+            
+            // If selected a file node, use its path
+            if (node.Tag is QuestRootJson && !string.IsNullOrEmpty(node.Text) && node.Text.EndsWith(".json"))
+            {
+                 // Try to find a quest in the same file to get the path
+                 var siblingQuest = currentQuests.quests.FirstOrDefault(q => Path.GetFileName(q.SourceFilePath) == node.Text);
+                 if (siblingQuest != null) newQuest.SourceFilePath = siblingQuest.SourceFilePath;
+                 else
+                 {
+                     // New file in quests folder
+                     string questsPath = Path.Combine(Directory.GetParent(currentFilePath).FullName, "quests");
+                     newQuest.SourceFilePath = Path.Combine(questsPath, node.Text);
+                 }
+            }
+
+            currentQuests.quests.Add(newQuest);
+            AddQuestNode(node.Text == "quests" ? node : node.Parent, newQuest);
+        }
+
+        private void addQuestNodeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var node = treeView1.SelectedNode;
+            if (node == null || node.Tag is not QuestJson quest) return;
+
+            var newNode = new QuestNodeJson { id = "Node_" + (DateTime.Now.Ticks % 1000), typeAction = "ActionNow", actionNow = new QuestActionNowJson() };
+            quest.nodes.Add(newNode);
+            
+            var qNodeNode = new TreeNode(newNode.ToString()) { Tag = newNode };
+            node.Nodes.Add(qNodeNode);
+            RefreshQuestSubNode(qNodeNode);
+            node.Expand();
         }
 
         private void addReactionToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1295,6 +1885,16 @@ namespace HoboEX_ModMaker
 
              if (targetObj is DialogueOptionJson opt) l10nDict = opt.l10n;
              else if (targetObj is DialogueReactionJson react) l10nDict = react.l10n;
+             else if (targetObj is NpcConversionJson conv)
+             {
+                 if (currentNpcs.strings == null) currentNpcs.strings = new DialogueL10n();
+                 if (!currentNpcs.strings.strings.ContainsKey(conv.archetype))
+                 {
+                     currentNpcs.strings.strings[conv.archetype] = new Dictionary<string, string>();
+                     conv.l10n = currentNpcs.strings.strings[conv.archetype];
+                 }
+                 l10nDict = currentNpcs.strings.strings[conv.archetype];
+             }
 
              if (l10nDict != null)
              {
@@ -1309,7 +1909,22 @@ namespace HoboEX_ModMaker
                      {
                          l10nDict[selector.SelectedArchetype] = "New Text";
                          if (targetObj is DialogueOptionJson) RefreshOptionNode(node.Tag == null ? node.Parent : node);
-                         else RefreshReactionNode(node.Tag == null ? node.Parent : node);
+                         else if (targetObj is DialogueReactionJson) RefreshReactionNode(node.Tag == null ? node.Parent : node);
+                         else if (targetObj is NpcConversionJson conv2)
+                         {
+                             var targetNode = node.Tag == null ? node.Parent : node;
+                             targetNode.Nodes.Clear();
+                             var stringItem = new NpcStringItem(conv2.archetype, l10nDict, currentNpcs);
+                             foreach (var lang in l10nDict)
+                             {
+                                 var l10nNode = new TreeNode(new L10nItem(lang.Key, lang.Value, stringItem).ToString())
+                                 {
+                                     Tag = new L10nItem(lang.Key, lang.Value, stringItem)
+                                 };
+                                 targetNode.Nodes.Add(l10nNode);
+                             }
+                             targetNode.Text = conv2.ToString();
+                         }
                      }
                  }
              }
@@ -1361,12 +1976,32 @@ namespace HoboEX_ModMaker
             
             if (tag is L10nItem lItem)
             {
-                 if (lItem.Parent is DialogueOptionJson o) o.l10n.Remove(lItem.Language);
-                 else if (lItem.Parent is DialogueReactionJson r) r.l10n.Remove(lItem.Language);
-                 
-                 var realParent = parentNode.Parent;
-                 if (realParent.Tag is DialogueOptionJson) RefreshOptionNode(realParent);
-                 else RefreshReactionNode(realParent);
+                 if (lItem.Parent is DialogueOptionJson o) 
+                 {
+                     o.l10n.Remove(lItem.Language);
+                     if (parentNode.Parent != null) RefreshOptionNode(parentNode.Parent);
+                 }
+                 else if (lItem.Parent is DialogueReactionJson r) 
+                 {
+                     r.l10n.Remove(lItem.Language);
+                     if (parentNode.Parent != null) RefreshReactionNode(parentNode.Parent);
+                 }
+                 else if (lItem.Parent is NpcStringItem n)
+                 {
+                     n.Data.Remove(lItem.Language);
+                     parentNode.Nodes.Remove(node);
+                     if (parentNode.Tag is NpcConversionJson) parentNode.Text = parentNode.Tag.ToString();
+                 }
+                 else if (lItem.Parent is QuestJson q)
+                 {
+                     q.l10n.Remove(lItem.Language);
+                     if (parentNode.Parent != null) RefreshQuestNode(parentNode.Parent);
+                 }
+                 else if (lItem.Parent is QuestActionNowJson qan)
+                 {
+                     qan.l10n.Remove(lItem.Language);
+                     if (parentNode.Parent != null) RefreshQuestNode(parentNode.Parent.Parent);
+                 }
                  return;
             }
 
@@ -1389,6 +2024,89 @@ namespace HoboEX_ModMaker
                 if (parentTag is DialogueOptionJson parentOpt) parentOpt.conditions.Remove(cond);
                 else if (parentTag is DialogueReactionJson parentReact) parentReact.conditions.Remove(cond);
             }
+            else if (tag is QuestJson quest)
+            {
+                currentQuests.quests.Remove(quest);
+            }
+            else if (tag is QuestNodeJson qnode)
+            {
+                if (parentTag is QuestJson pQuest) pQuest.nodes.Remove(qnode);
+            }
+            else if (tag is DialogueFileRoot dialogueFile && node.Parent?.Text == "options")
+            {
+                // Delete dialogue file - move to recycle bin
+                string filePath = null;
+                foreach (var npc in currentRoot.dialogues.Where(d => d.SourceFilePath == dialogueFile.SourceFilePath).ToList())
+                {
+                    filePath = npc.SourceFilePath;
+                    currentRoot.dialogues.Remove(npc);
+                }
+                
+                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                {
+                    try
+                    {
+                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(filePath, 
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, 
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                        
+                        // Also delete l10n file if exists
+                        string l10nPath = filePath.Replace(".json", "_l10n.json");
+                        if (File.Exists(l10nPath))
+                        {
+                            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(l10nPath, 
+                                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, 
+                                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                        }
+                        
+                        node.Remove();
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to delete file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+            }
+            else if (tag is QuestRootJson questFile && node.Parent?.Text == "quests")
+            {
+                // Delete quest file - move to recycle bin
+                string filePath = questFile.SourceFilePath;
+                
+                // Remove all quests from this file
+                foreach (var q in currentQuests.quests.Where(q => q.SourceFilePath == filePath).ToList())
+                {
+                    currentQuests.quests.Remove(q);
+                }
+                
+                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                {
+                    try
+                    {
+                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(filePath, 
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, 
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                        
+                        // Also delete l10n file if exists
+                        string l10nPath = filePath.Replace(".json", "_l10n.json");
+                        if (File.Exists(l10nPath))
+                        {
+                            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(l10nPath, 
+                                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, 
+                                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                        }
+                        
+                        node.Remove();
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to delete file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+            }
 
             // After deleting an item, refresh the container's real parent to handle auto-disappear of empty folder
             if (parentNode.Tag == null) // We were inside a virtual folder
@@ -1398,11 +2116,33 @@ namespace HoboEX_ModMaker
                 {
                     if (realParent.Tag is DialogueOptionJson) RefreshOptionNode(realParent);
                     else if (realParent.Tag is DialogueReactionJson) RefreshReactionNode(realParent);
+                    else if (realParent.Tag is QuestJson) RefreshQuestNode(realParent);
                 }
             }
             else
             {
                 node.Remove();
+            }
+        }
+
+        private void showInExplorerToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var node = treeView1.SelectedNode;
+            if (node == null) return;
+            object tag = node.Tag;
+            string path = string.Empty;
+
+            if (tag is string s && !string.IsNullOrEmpty(s) && File.Exists(s)) path = s;
+            else if (tag is DialogueFileRoot root && !string.IsNullOrEmpty(root.SourceFilePath)) path = root.SourceFilePath;
+            else if (tag is NpcDialogueJson npc && !string.IsNullOrEmpty(npc.SourceFilePath)) path = npc.SourceFilePath;
+
+            if (!string.IsNullOrEmpty(path))
+            {
+                try {
+                    System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + path + "\"");
+                } catch (Exception ex) {
+                    Log($"Failed to open explorer: {ex.Message}", true);
+                }
             }
         }
 
@@ -1947,6 +2687,13 @@ namespace HoboEX_ModMaker
             {
                 pf.ShowDialog();
             }
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string title = LocalizationManager.Get("AboutTitle") ?? "About";
+            string content = LocalizationManager.Get("AboutContent") ?? "HoboEX Mod Editor by pokewiz";
+            MessageBox.Show(content, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

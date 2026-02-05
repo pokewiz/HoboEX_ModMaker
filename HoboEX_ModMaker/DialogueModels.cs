@@ -24,18 +24,26 @@ namespace HoboEX_ModMaker.Models
             panel.Controls.Add(tb);
 
             string[] items = new string[0];
-            if (context.PropertyDescriptor.Converter is StringConverter conv)
-            {
-                var vals = conv.GetStandardValues(context);
-                if (vals != null)
-                {
-                    items = new string[vals.Count];
-                    for (int i = 0; i < vals.Count; i++) items[i] = vals[i].ToString();
-                }
-            }
 
-            lb.Items.AddRange(items);
-            if (value != null) lb.SelectedItem = value.ToString();
+            Action refreshList = () =>
+            {
+                if (context.PropertyDescriptor.Converter is StringConverter conv)
+                {
+                    var vals = conv.GetStandardValues(context);
+                    if (vals != null)
+                    {
+                        items = new string[vals.Count];
+                        for (int i = 0; i < vals.Count; i++) items[i] = vals[i].ToString();
+                    }
+                }
+                lb.Items.Clear();
+                lb.Items.AddRange(items);
+                if (value != null) lb.SelectedItem = value.ToString();
+            };
+
+            refreshList();
+            DialogueModels.OnArchetypesChanged += refreshList;
+            panel.Disposed += (s, e) => DialogueModels.OnArchetypesChanged -= refreshList;
 
             tb.TextChanged += (s, e) =>
             {
@@ -169,7 +177,12 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(DialogueModels.NPC_ARCHETYPES);
+            var list = new List<string>(DialogueModels.NPC_ARCHETYPES);
+            if (DialogueModels.CustomArchetypes != null)
+            {
+                list.AddRange(DialogueModels.CustomArchetypes);
+            }
+            return new StandardValuesCollection(list.Where(x => x != null).Distinct().ToList());
         }
     }
 
@@ -179,7 +192,7 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(new string[] { "Reputation", "Flag", "GlobalBool", "Cash", "Recipe", "Item", "BT", "Courage", "Parameter", "SK", "QuestNode", "Angry", "Timer" });
+            return new StandardValuesCollection(new string[] { "Reputation", "GlobalBool", "Cash", "Recipe", "Item", "BT", "Courage", "Parameter", "SK", "QuestNode", "Angry", "Timer" });
         }
     }
 
@@ -189,7 +202,7 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(new string[] { "GiveReputation", "SetFlag", "SetGlobalBool", "Pay", "GiveRecipe", "GiveItem", "ItemNotif", "GiveBT", "GiveCourage", "GiveParameter", "GiveBuff", "StartQuest", "QuestDone", "QuestFail", "SetAngry", "SetTimer" });
+            return new StandardValuesCollection(new string[] { "GiveReputation", "SetGlobalBool", "Pay", "GiveRecipe", "GiveItem", "ItemNotif", "GiveBT", "GiveCourage", "GiveParameter", "GiveBuff", "StartQuest", "RemoveQuest", "QuestDone", "QuestFail", "SetAngry", "SetTimer" });
         }
     }
 
@@ -256,6 +269,11 @@ namespace HoboEX_ModMaker.Models
 
     public static class DialogueModels
     {
+        public static List<string> CustomArchetypes { get; set; } = new List<string>();
+        public static Dictionary<string, Dictionary<string, string>> CurrentNpcStrings { get; set; }
+        public static event Action OnArchetypesChanged;
+        public static void NotifyArchetypesChanged() => OnArchetypesChanged?.Invoke();
+
         public static readonly string[] NPC_ARCHETYPES = new string[] {
             "NPC_M_ChaserWorker", "NPC_M_ChaserResident", "NPC_M_ChaserGauner", "Specific_Dory",
             "Specific_Ilona", "Specific_Hektor", "Pig_Quest", "Hobo_Furgrim", "Hobo_KolotukFranz",
@@ -385,6 +403,76 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
     }
 
+    public enum GameType
+    {
+        NULL = 0,
+        beggingRand = 6,
+        tradingRand = 7,
+        tradingNormal = 8,
+        stealingRand = 9,
+        conversationRand = 10,
+        conversationNormal = 11,
+        crafting = 12,
+        bufeting = 13,
+        nothing = 14,
+        stealing100 = 15,
+        trading100 = 16
+    }
+
+    public enum GameResult
+    {
+        Null = 0,
+        bad = 1,
+        neutral = 2,
+        good = 3,
+        excellent = 4,
+        BACK = 5
+    }
+
+    public enum TargetDifficulty
+    {
+        Easy = 0,
+        Medium = 1,
+        Hard = 2,
+        VeryHard = 3
+    }
+
+    public enum ForceOptionType
+    {
+        Null = 0,
+        ForceOption = 1,
+        ForceAutoOption = 2,
+        ForceAutoOptionWithPlus = 3
+    }
+
+    public class GameTypeConverter : EnumConverter
+    {
+        public GameTypeConverter() : base(typeof(GameType)) { }
+        public override bool GetStandardValuesSupported(ITypeDescriptorContext context) => true;
+        public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
+    }
+
+    public class GameResultConverter : EnumConverter
+    {
+        public GameResultConverter() : base(typeof(GameResult)) { }
+        public override bool GetStandardValuesSupported(ITypeDescriptorContext context) => true;
+        public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
+    }
+
+    public class TargetDifficultyConverter : EnumConverter
+    {
+        public TargetDifficultyConverter() : base(typeof(TargetDifficulty)) { }
+        public override bool GetStandardValuesSupported(ITypeDescriptorContext context) => true;
+        public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
+    }
+
+    public class ForceOptionTypeConverter : EnumConverter
+    {
+        public ForceOptionTypeConverter() : base(typeof(ForceOptionType)) { }
+        public override bool GetStandardValuesSupported(ITypeDescriptorContext context) => true;
+        public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
+    }
+
     public class DialogueOptionJson
     {
         [Category("Identification")]
@@ -399,6 +487,21 @@ namespace HoboEX_ModMaker.Models
         [DisplayName("Color")]
         [Editor(typeof(HexColorEditor), typeof(UITypeEditor))]
         public string color { get; set; } = "";
+
+        [Category("QTE / Minigame")]
+        [DisplayName("Game Type")]
+        [TypeConverter(typeof(GameTypeConverter))]
+        public GameType gameType { get; set; } = GameType.NULL;
+
+        [Category("QTE / Minigame")]
+        [DisplayName("Difficulty")]
+        [TypeConverter(typeof(TargetDifficultyConverter))]
+        public TargetDifficulty difficulty { get; set; } = TargetDifficulty.Easy;
+
+        [Category("QTE / Minigame")]
+        [DisplayName("Force Type")]
+        [TypeConverter(typeof(ForceOptionTypeConverter))]
+        public ForceOptionType forceType { get; set; } = ForceOptionType.Null;
 
         [Category("Service")]
         [DisplayName("Shop Type")]
@@ -443,6 +546,11 @@ namespace HoboEX_ModMaker.Models
         [DisplayName("Show Native Exit")]
         public bool showNativeExit { get; set; }
 
+        [Category("QTE / Minigame")]
+        [DisplayName("Game Result")]
+        [TypeConverter(typeof(GameResultConverter))]
+        public GameResult gameRes { get; set; } = GameResult.Null;
+
         [Browsable(false)]
         [JsonIgnore]
         public Dictionary<string, string> l10n { get; set; } = new Dictionary<string, string>();
@@ -474,11 +582,26 @@ namespace HoboEX_ModMaker.Models
         [Browsable(false)]
         public List<DialogueOptionJson> entryOptions { get; set; } = new List<DialogueOptionJson>();
 
-        public override string ToString() => $"NPC: {npcArchetype}";
+        public override string ToString()
+        {
+            string displayName = npcArchetype;
+            if (DialogueModels.CurrentNpcStrings != null && DialogueModels.CurrentNpcStrings.ContainsKey(npcArchetype))
+            {
+                var dict = DialogueModels.CurrentNpcStrings[npcArchetype];
+                if (dict.ContainsKey("zh")) displayName = dict["zh"];
+                else if (dict.ContainsKey("en")) displayName = dict["en"];
+                else if (dict.Count > 0) displayName = dict.Values.First();
+                
+                return $"NPC: {displayName} ({npcArchetype})";
+            }
+            return $"NPC: {npcArchetype}";
+        }
     }
 
     public class DialogueFileRoot
     {
+        [JsonIgnore]
+        public string SourceFilePath { get; set; } = "";
         public List<NpcDialogueJson> dialogues { get; set; } = new List<NpcDialogueJson>();
     }
 

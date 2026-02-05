@@ -24,7 +24,7 @@ namespace HoboEX_ModMaker
             if (startNode is NpcDialogueJson npc) _npcName = npc.npcArchetype;
             else _npcName = npcName;
             
-            this.Text = $"Dialogue Preview - {_npcName}";
+            this.Text = $"{LocalizationManager.Get("PreviewTitle")} - {_npcName}";
             
             // Set dark theme
             this.BackColor = Color.FromArgb(30, 30, 30);
@@ -63,7 +63,7 @@ namespace HoboEX_ModMaker
                 }
                 else
                 {
-                    lblNpcText.Text = "[End of Dialogue]";
+                    lblNpcText.Text = LocalizationManager.Get("PreviewEndDialogue");
                     _currentOptions = new List<DialogueOptionJson>();
                 }
             }
@@ -111,14 +111,12 @@ namespace HoboEX_ModMaker
                 }
                 else if (opt.shopType != ShopType.Null)
                 {
-                    string msg = LocalizationManager.CurrentLanguage.StartsWith("zh") 
-                        ? $"已打开商店: {opt.shopType}" 
-                        : $"Opened shop: {opt.shopType}";
+                    string msg = string.Format(LocalizationManager.Get("PreviewOpenShop"), opt.shopType);
                     MessageBox.Show(msg);
                 }
                 else
                 {
-                    MessageBox.Show("No reactions linked to this option (and IsExit is false).");
+                    MessageBox.Show(LocalizationManager.Get("PreviewNoReaction"));
                 }
             };
 
