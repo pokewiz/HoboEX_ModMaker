@@ -741,6 +741,32 @@ namespace HoboEX_ModMaker
                     }
                 }
 
+                if (node.Tag is QuestNodeJson qnode && e.ChangedItem.PropertyDescriptor.Name == "typeAction")
+                {
+                    // Initialize the new action and clear others
+                    if (qnode.typeAction == "ActionNow")
+                    {
+                        if (qnode.actionNow == null) qnode.actionNow = new QuestActionNowJson();
+                        qnode.actionWait = null;
+                        qnode.actionConv = null;
+                    }
+                    else if (qnode.typeAction == "ActionWait")
+                    {
+                        if (qnode.actionWait == null) qnode.actionWait = new QuestActionWaitJson();
+                        qnode.actionNow = null;
+                        qnode.actionConv = null;
+                    }
+                    else if (qnode.typeAction == "ActionConv")
+                    {
+                        if (qnode.actionConv == null) qnode.actionConv = new QuestActionConvJson();
+                        qnode.actionNow = null;
+                        qnode.actionWait = null;
+                    }
+
+                    RefreshQuestSubNode(node);
+                    node.Expand();
+                }
+
                 if (node.Tag is ArchetypeJson)
                 {
                     UpdateCustomArchetypes();
@@ -756,16 +782,16 @@ namespace HoboEX_ModMaker
                     else if (item.Parent is QuestActionWaitJson qaw) qaw.l10n[item.Language] = item.Text;
                     else if (item.Parent is QuestActionConvJson qac) qac.l10n[item.Language] = item.Text;
                 }
-                
+
                 // Recalculate text
                 RecalculateNodeText(node);
                 
                 // If it's the main text of an option/reaction, we might want to refresh the parent label
                 if (node.Parent != null)
                 {
-                    if (node.Parent.Tag is DialogueOptionJson || node.Parent.Tag is DialogueReactionJson || node.Parent.Tag is NpcConversionJson || node.Parent.Tag is QuestJson)
+                    if (node.Parent.Tag is DialogueOptionJson || node.Parent.Tag is DialogueReactionJson || node.Parent.Tag is NpcConversionJson || node.Parent.Tag is QuestJson || node.Parent.Tag is QuestNodeJson)
                         node.Parent.Text = node.Parent.Tag.ToString();
-                    else if (node.Parent.Parent != null && (node.Parent.Parent.Tag is DialogueOptionJson || node.Parent.Parent.Tag is DialogueReactionJson || node.Parent.Parent.Tag is NpcConversionJson || node.Parent.Parent.Tag is QuestJson))
+                    else if (node.Parent.Parent != null && (node.Parent.Parent.Tag is DialogueOptionJson || node.Parent.Parent.Tag is DialogueReactionJson || node.Parent.Parent.Tag is NpcConversionJson || node.Parent.Parent.Tag is QuestJson || node.Parent.Parent.Tag is QuestNodeJson))
                          node.Parent.Parent.Text = node.Parent.Parent.Tag.ToString();
                 }
             }
@@ -1299,7 +1325,7 @@ namespace HoboEX_ModMaker
             var node = treeView1.SelectedNode;
             if (node == null) { e.Cancel = true; return; }
 
-            object tag = node.Tag;
+            object nodeTag = node.Tag;
             bool isActionsNode = node.Text == LocalizationManager.Get("NodeActions");
             bool isConditionsNode = node.Text == LocalizationManager.Get("NodeConditions");
             bool isL10nNode = node.Text == (LocalizationManager.Get("NodeL10n") ?? "Localization");
@@ -1318,41 +1344,47 @@ namespace HoboEX_ModMaker
             bool isReputations = node.Text == LocalizationManager.Get("NodeReputations");
             bool isConversions = node.Text == LocalizationManager.Get("NodeConversions");
 
-            object parentTag = node.Tag;
+            bool isOptionFolderNode = node.Text == "options" && nodeTag == currentRoot;
+            bool isQuestFolderNode = node.Text == "quests" && nodeTag == currentQuests;
+            bool isModFolder = IsModFolderMode();
+            bool isFileNode = (nodeTag is string s && !string.IsNullOrEmpty(s)) || 
+                              (nodeTag is DialogueFileRoot rootFile && !string.IsNullOrEmpty(rootFile.SourceFilePath)) ||
+                              (nodeTag is QuestRootJson questFile && node.Parent?.Text == "quests");
+
             bool canAddItem = (isConsumables || isScraps || isBags || isGears || isRecipes || isShops || isSells || isPackages || isSalvage) && currentItems != null;
             canAddItem |= isArchetypes && (currentItems != null || currentNpcs != null);
             canAddItem |= isReputations && currentReputations != null;
             canAddItem |= isConversions && currentNpcs != null;
 
             // 1. Logic States
-            bool isModFolder = IsModFolderMode();
-            bool isFileNode = (tag is string s && !string.IsNullOrEmpty(s)) || 
-                              (tag is DialogueFileRoot rootFile && !string.IsNullOrEmpty(rootFile.SourceFilePath)) ||
-                              (tag is QuestRootJson questFile && node.Parent?.Text == "quests");
+            bool canAddOption = (nodeTag is DialogueFileRoot && (!isModFolder || isFileNode)) || isFileNode || nodeTag is NpcDialogueJson || nodeTag is DialogueReactionJson;
+            bool canAddReaction = nodeTag is DialogueOptionJson;
+            bool canAddAction = nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || isActionsNode;
+            bool canAddCondition = nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || isConditionsNode;
+            bool canAddL10n = nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || isL10nNode || nodeTag is NpcConversionJson;
 
-            bool canAddOption = (tag is DialogueFileRoot && (!isModFolder || isFileNode)) || isFileNode || tag is NpcDialogueJson || tag is DialogueReactionJson;
-            bool canAddReaction = tag is DialogueOptionJson;
-            bool canAddAction = tag is DialogueOptionJson || tag is DialogueReactionJson || isActionsNode;
-            bool canAddCondition = tag is DialogueOptionJson || tag is DialogueReactionJson || isConditionsNode;
-            bool canAddL10n = tag is DialogueOptionJson || tag is DialogueReactionJson || isL10nNode || tag is NpcConversionJson;
-
-            bool isDataNode = tag is DialogueActionJson || tag is DialogueConditionJson || tag is DialogueOptionJson || tag is DialogueReactionJson;
+            bool isDataNode = nodeTag is DialogueActionJson || nodeTag is DialogueConditionJson || nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || nodeTag is QuestNodeJson || nodeTag is QuestJson || nodeTag is QuestItemRequirementJson || nodeTag is QuestBoolRequirementJson || nodeTag is QuestNumRequirementJson;
             bool canCopy = isDataNode;
-            bool canCut = isDataNode && !(tag is DialogueOptionJson && node.Parent?.Tag is NpcDialogueJson); 
+            bool canCut = isDataNode && !(nodeTag is DialogueOptionJson && node.Parent?.Tag is NpcDialogueJson) && !(nodeTag is QuestNodeJson && node.Parent?.Tag is QuestJson); 
             
             bool canPaste = false;
             if (clipboardData != null)
             {
-                if (clipboardData is DialogueActionJson && (tag is DialogueOptionJson || tag is DialogueReactionJson || isActionsNode)) canPaste = true;
-                else if (clipboardData is DialogueConditionJson && (tag is DialogueOptionJson || tag is DialogueReactionJson || isConditionsNode)) canPaste = true;
-                else if (clipboardData is DialogueOptionJson && (tag is DialogueReactionJson || tag is NpcDialogueJson)) canPaste = true;
-                else if (clipboardData is DialogueReactionJson && tag is DialogueOptionJson) canPaste = true;
+                if (clipboardData is DialogueActionJson && (nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || isActionsNode)) canPaste = true;
+                else if (clipboardData is DialogueConditionJson && (nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || isConditionsNode)) canPaste = true;
+                else if (clipboardData is DialogueOptionJson && (nodeTag is DialogueReactionJson || nodeTag is NpcDialogueJson)) canPaste = true;
+                else if (clipboardData is DialogueReactionJson && nodeTag is DialogueOptionJson) canPaste = true;
+                else if (clipboardData is QuestNodeJson && nodeTag is QuestJson) canPaste = true;
+                else if (clipboardData is QuestJson && isQuestFolderNode) canPaste = true;
+                else if (clipboardData is QuestItemRequirementJson && (nodeTag is QuestActionWaitJson || node.Text == "Items")) canPaste = true;
+                else if (clipboardData is QuestBoolRequirementJson && (nodeTag is QuestActionWaitJson || node.Text == "Global Bools")) canPaste = true;
+                else if (clipboardData is QuestNumRequirementJson && (nodeTag is QuestActionWaitJson || node.Text == "Global Nums")) canPaste = true;
             }
-            bool canShowPaste = tag is DialogueOptionJson || tag is DialogueReactionJson || tag is NpcDialogueJson || isActionsNode || isConditionsNode;
-            bool canDelete = !(tag is string) && node.Parent != null; // Allow deleting most nodes except string-based references and root
-            bool isModRoot = tag is ModInfo;
+            bool canShowPaste = nodeTag is DialogueOptionJson || nodeTag is DialogueReactionJson || nodeTag is NpcDialogueJson || isActionsNode || isConditionsNode || nodeTag is QuestJson || isQuestFolderNode || nodeTag is QuestActionWaitJson || node.Text == "Items" || node.Text == "Global Bools" || node.Text == "Global Nums";
+            bool canDelete = !(nodeTag is string) && node.Parent != null; // Allow deleting most nodes except string-based references and root
+            bool isModRoot = nodeTag is ModInfo;
 
-            bool canShowInExplorer = isFileNode || (tag is DialogueFileRoot && !string.IsNullOrEmpty((tag as DialogueFileRoot)?.SourceFilePath)) || (tag is NpcDialogueJson && !string.IsNullOrEmpty(((NpcDialogueJson)tag).SourceFilePath));
+            bool canShowInExplorer = isFileNode || (nodeTag is DialogueFileRoot && !string.IsNullOrEmpty((nodeTag as DialogueFileRoot)?.SourceFilePath)) || (nodeTag is NpcDialogueJson && !string.IsNullOrEmpty(((NpcDialogueJson)nodeTag).SourceFilePath));
 
             // 2. Apply Visibility & Localization
             addItemsJsonToolStripMenuItem.Visible = isModRoot && currentItems == null;
@@ -1370,14 +1402,12 @@ namespace HoboEX_ModMaker
             addQuestsDirToolStripMenuItem.Visible = isModRoot && currentQuests == null;
             addQuestsDirToolStripMenuItem.Text = LocalizationManager.Get("MenuAddQuests") ?? "Add quests folder";
 
-            bool isOptionFolderNode = node.Text == "options" && tag == currentRoot;
-            bool isQuestFolderNode = node.Text == "quests" && tag == currentQuests;
             bool canAddFile = (isOptionFolderNode || isQuestFolderNode) && isModFolder;
             addFileToolStripMenuItem.Visible = canAddFile;
             addFileToolStripMenuItem.Text = LocalizationManager.Get("MenuAddFile") ?? "Add Dialogue File (.json)";
 
             addOptionToolStripMenuItem.Visible = canAddOption;
-            addOptionToolStripMenuItem.Text = (tag is DialogueFileRoot || isFileNode) ? LocalizationManager.Get("ContextAddNPC") : LocalizationManager.Get("ContextAddOption");
+            addOptionToolStripMenuItem.Text = (nodeTag is DialogueFileRoot || isFileNode) ? LocalizationManager.Get("ContextAddNPC") : LocalizationManager.Get("ContextAddOption");
             
             addReactionToolStripMenuItem.Visible = canAddReaction;
             addReactionToolStripMenuItem.Text = LocalizationManager.Get("ContextAddReaction");
@@ -1408,7 +1438,7 @@ namespace HoboEX_ModMaker
             showInExplorerToolStripMenuItem.Text = LocalizationManager.Get("ContextShowInExplorer") ?? "Show in Explorer";
 
             // Quest-specific menu items
-            addQuestNodeToolStripMenuItem.Visible = tag is QuestJson;
+            addQuestNodeToolStripMenuItem.Visible = nodeTag is QuestJson;
             questSeparator.Visible = addQuestNodeToolStripMenuItem.Visible;
 
             // 3. Separator Management
@@ -2169,6 +2199,7 @@ namespace HoboEX_ModMaker
         {
             var node = treeView1.SelectedNode;
             if (node == null || clipboardData == null) return;
+            var tag = node.Tag;
 
             // Clone data for multiple pastes
             object? clone = null;
@@ -2203,11 +2234,37 @@ namespace HoboEX_ModMaker
                 }
             }
 
+            else if (clipboardData is QuestNodeJson qnSource)
+            {
+                var qnTarget = JsonSerializer.Deserialize<QuestNodeJson>(json);
+                if (qnTarget != null)
+                {
+                    qnTarget.id = "Node_" + (DateTime.Now.Ticks % 1000);
+                    CopyL10nRecursiveQuest(qnSource, qnTarget);
+                    clone = qnTarget;
+                }
+            }
+            else if (clipboardData is QuestJson questSource)
+            {
+                var questTarget = JsonSerializer.Deserialize<QuestJson>(json);
+                if (questTarget != null)
+                {
+                    questTarget.questID = "Quest_" + (DateTime.Now.Ticks % 1000);
+                    questTarget.questTitle += " (Copy)";
+                    questTarget.l10n = new Dictionary<string, string>(questSource.l10n);
+                    clone = questTarget;
+                }
+            }
+            else if (clipboardData is QuestItemRequirementJson) clone = JsonSerializer.Deserialize<QuestItemRequirementJson>(json);
+            else if (clipboardData is QuestBoolRequirementJson) clone = JsonSerializer.Deserialize<QuestBoolRequirementJson>(json);
+            else if (clipboardData is QuestNumRequirementJson) clone = JsonSerializer.Deserialize<QuestNumRequirementJson>(json);
+
             if (clone == null) return;
 
             // Target resolution
             bool isActionsNode = node.Text == LocalizationManager.Get("NodeActions");
             bool isConditionsNode = node.Text == LocalizationManager.Get("NodeConditions");
+            bool isQuestFolderNode = node.Text == "quests" && tag == currentQuests;
 
             if (clone is DialogueActionJson act)
             {
@@ -2238,6 +2295,61 @@ namespace HoboEX_ModMaker
             {
                 if (node.Tag is DialogueOptionJson o) { o.reactions.Add(newReact); RefreshOptionNode(node); }
             }
+            else if (clone is QuestNodeJson newQNode)
+            {
+                if (node.Tag is QuestJson q) { q.nodes.Add(newQNode); RefreshQuestNode(node); }
+            }
+            else if (clone is QuestJson newQuest)
+            {
+                if (isQuestFolderNode) 
+                { 
+                    currentQuests.quests.Add(newQuest); 
+                    AddQuestNode(node, newQuest); 
+                }
+                else if (node.Tag is QuestRootJson)
+                {
+                    // Add to specific file
+                    var rootNode = node.Text.EndsWith(".json") ? node : node.Parent;
+                    var siblingQuest = currentQuests.quests.FirstOrDefault(q => Path.GetFileName(q.SourceFilePath) == rootNode.Text);
+                    if (siblingQuest != null) newQuest.SourceFilePath = siblingQuest.SourceFilePath;
+                    
+                    currentQuests.quests.Add(newQuest);
+                    AddQuestNode(rootNode, newQuest);
+                }
+            }
+            else if (clone is QuestItemRequirementJson qi)
+            {
+                var wait = (node.Tag as QuestActionWaitJson) ?? (node.Parent?.Tag as QuestActionWaitJson);
+                if (wait != null) { wait.items.Add(qi); RefreshQuestNodeFromAction(wait); }
+            }
+            else if (clone is QuestBoolRequirementJson qb)
+            {
+                var wait = (node.Tag as QuestActionWaitJson) ?? (node.Parent?.Tag as QuestActionWaitJson);
+                if (wait != null) { wait.globalBools.Add(qb); RefreshQuestNodeFromAction(wait); }
+            }
+            else if (clone is QuestNumRequirementJson qn)
+            {
+                var wait = (node.Tag as QuestActionWaitJson) ?? (node.Parent?.Tag as QuestActionWaitJson);
+                if (wait != null) { wait.globalNums.Add(qn); RefreshQuestNodeFromAction(wait); }
+            }
+        }
+
+        private void RefreshQuestNodeFromAction(object action)
+        {
+            // Traverse up tree to find the quest node and refresh it
+            TreeNode n = treeView1.SelectedNode;
+            while (n != null && n.Tag != null && n.Tag is not QuestJson) n = n.Parent;
+            if (n != null) RefreshQuestNode(n);
+        }
+
+        private void CopyL10nRecursiveQuest(QuestNodeJson source, QuestNodeJson target)
+        {
+            if (source.actionNow != null && target.actionNow != null)
+                target.actionNow.l10n = new Dictionary<string, string>(source.actionNow.l10n);
+            if (source.actionWait != null && target.actionWait != null)
+                target.actionWait.l10n = new Dictionary<string, string>(source.actionWait.l10n);
+            if (source.actionConv != null && target.actionConv != null)
+                target.actionConv.l10n = new Dictionary<string, string>(source.actionConv.l10n);
         }
 
         private void CopyL10nRecursive(object source, object target)

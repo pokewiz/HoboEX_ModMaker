@@ -66,6 +66,7 @@ namespace HoboEX_ModMaker.Models
         [Category("Basic")]
         [DisplayName("Type")]
         [TypeConverter(typeof(QuestNodeTypeConverter))]
+        [RefreshProperties(RefreshProperties.All)]
         public string typeAction { get; set; } = "ActionNow"; // "ActionNow", "ActionWait", "ActionConv"
 
         [Category("Behavior")]

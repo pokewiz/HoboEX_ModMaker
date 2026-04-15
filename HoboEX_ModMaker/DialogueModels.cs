@@ -192,7 +192,7 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(new string[] { "Reputation", "GlobalBool", "Cash", "Recipe", "Item", "BT", "Courage", "Parameter", "SK", "QuestNode", "Angry", "Timer" });
+            return new StandardValuesCollection(new string[] { "Reputation", "GlobalBool", "GlobalNums", "Cash", "Recipe", "Item", "BT", "Courage", "Parameter", "SK", "QuestNode", "Angry", "Timer" });
         }
     }
 
@@ -202,7 +202,7 @@ namespace HoboEX_ModMaker.Models
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
         {
-            return new StandardValuesCollection(new string[] { "GiveReputation", "SetGlobalBool", "Pay", "GiveRecipe", "GiveItem", "ItemNotif", "GiveBT", "GiveCourage", "GiveParameter", "GiveBuff", "StartQuest", "RemoveQuest", "QuestDone", "QuestFail", "SetAngry", "SetTimer" });
+            return new StandardValuesCollection(new string[] { "GiveReputation", "SetGlobalBool", "SetGlobalNums", "Pay", "GiveRecipe", "GiveItem", "ItemNotif", "GiveBT", "GiveCourage", "GiveParameter", "GiveBuff", "StartQuest", "RemoveQuest", "QuestDone", "QuestFail", "SetAngry", "SetTimer" });
         }
     }
 
